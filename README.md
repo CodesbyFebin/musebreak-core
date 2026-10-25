@@ -88,6 +88,25 @@ docker compose --profile gpu up vllm    # optional open-weight model via vLLM (s
 Anyone can impersonate the demo key. For any real use, enrol your own keys (`tools/enroll_dev_key.py`), override
 `METAKEY_ID/METAKEY_SECRET/METAKEY_PUBKEY_PEM`, and keep secrets in a secure element.
 
+
+## Command center CLI + agent swarm
+A `musebreak` CLI drives a **sandboxed, role-based agent swarm** on top of the gateway. It runs offline in mock
+mode by default, and every step is wrapped by the 2-gate auth + guard + audit model. Exec steps inside the
+**isolated Kali Firecracker microVM** are **dry-run unless** you pass `--i-am-authorized` and a named `--approver`
+(red tier always needs the approver). This is a **defensive, authorized-lab** tool — no attack tooling ships here.
+```bash
+pip install -e cli            # provides `musebreak`
+musebreak agents list         # roles -> model tier routing
+musebreak sandbox up --session demo
+musebreak swarm run cli/missions/example_mission.yaml                 # exec steps DRY-RUN
+musebreak swarm run cli/missions/example_mission.yaml --i-am-authorized --approver "ciso@lab (#1234)"
+musebreak audit tail
+```
+Design + safety model: [`docs/CLI_SWARM_DESIGN.md`](docs/CLI_SWARM_DESIGN.md). Roles: Planner, Recon-Analyst,
+ExploitDev (defensive/lab-only), Reviewer/Guard, Reporter. Tiers: Muse Spark → Wonder → Wonderful/Wonderful-Cyber
+→ Glimmer/Llama (open-weight). Muse Code is the agent runtime / tool-calling layer; all model calls route through
+the gateway.
+
 ## Master prompt
 See [`MASTER_PROMPT.md`](MASTER_PROMPT.md).
 
