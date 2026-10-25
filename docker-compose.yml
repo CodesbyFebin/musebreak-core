@@ -1,0 +1,48 @@
+# docker compose up --build              -> redis + gateway + proxy + mock upstream + frontend
+# docker compose --profile gpu up --build -> also vLLM (NVIDIA GPU) as upstream/guard model
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}"]
+  backend:
+    build: ./backend
+    ports: ["8000:8000"]
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ENROLL_TOKEN: ${ENROLL_TOKEN:-}
+      DEMO_USER: ${DEMO_USER:-judge}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-musebreak}
+      META_MODEL_API_URL: ${META_MODEL_API_URL:-}
+      META_MODEL_API_KEY: ${META_MODEL_API_KEY:-}
+      GUARD_LLM_URL: ${GUARD_LLM_URL:-}
+      GUARD_LLM_MODEL: ${GUARD_LLM_MODEL:-}
+      AUDIT_PATH: /data/audit.jsonl
+    volumes: ["audit:/data"]
+    depends_on: [redis]
+  proxy:
+    build: ./proxy
+    ports: ["8443:8443"]
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      UPSTREAM_URL: ${UPSTREAM_URL:-http://mock-upstream:9000}
+      LISTEN: ":8443"
+  mock-upstream:
+    build: ./backend
+    working_dir: /lt
+    command: ["uvicorn", "mock_upstream:app", "--host", "0.0.0.0", "--port", "9000"]
+    volumes: ["./loadtest:/lt:ro"]
+  frontend:
+    build:
+      context: ./frontend
+      args: { NEXT_PUBLIC_API_URL: "http://localhost:8000" }
+    ports: ["3000:3000"]
+    depends_on: [backend]
+  vllm:
+    profiles: ["gpu"]
+    image: vllm/vllm-openai:latest
+    command: ["--model", "${VLLM_MODEL:-meta-llama/Llama-3.1-8B-Instruct}", "--port", "8000"]
+    environment: { HUGGING_FACE_HUB_TOKEN: "${HF_TOKEN:-}" }
+    deploy: { resources: { reservations: { devices: [{ driver: nvidia, count: all, capabilities: [gpu] }] } } }
+volumes:
+  audit:

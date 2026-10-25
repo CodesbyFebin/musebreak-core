@@ -1,0 +1,32 @@
+[2026-10-25 22:35:20,444] grok-bot-vm-446931431/INFO/locust.main: Starting Locust 2.47.0
+[2026-10-25 22:35:20,447] grok-bot-vm-446931431/INFO/locust.runners: grok-bot-vm-446931431_e7b2b664621044dc9a019849aec65465 (index 0) reported as ready. 1 workers connected.
+[2026-10-25 22:35:20,448] grok-bot-vm-446931431/INFO/locust.runners: grok-bot-vm-446931431_289a0d58af2c45f9ad4b70b98b4a00b3 (index 1) reported as ready. 2 workers connected.
+[2026-10-25 22:35:21,447] grok-bot-vm-446931431/INFO/locust.main: Run time limit set to 30 seconds
+[2026-10-25 22:35:21,448] grok-bot-vm-446931431/INFO/locust.runners: Sending spawn jobs of 40 users at 20.00 spawn rate to 2 ready workers
+[2026-10-25 22:35:22,502] grok-bot-vm-446931431/INFO/locust.runners: All users spawned: {"MuseBreakUser": 40} (40 total users)
+[2026-10-25 22:35:51,448] grok-bot-vm-446931431/INFO/locust.main: --run-time limit reached, shutting down
+[2026-10-25 22:35:51,468] grok-bot-vm-446931431/INFO/locust.runners: Worker 'grok-bot-vm-446931431_e7b2b664621044dc9a019849aec65465' (index 0) quit. 0 workers ready.
+[2026-10-25 22:35:51,469] grok-bot-vm-446931431/INFO/locust.runners: Worker 'grok-bot-vm-446931431_289a0d58af2c45f9ad4b70b98b4a00b3' (index 1) quit. 0 workers ready.
+[2026-10-25 22:35:51,469] grok-bot-vm-446931431/INFO/locust.runners: The last worker quit, stopping test.
+[2026-10-25 22:35:52,452] grok-bot-vm-446931431/INFO/locust.main: Shutting down (exit code 0)
+Type     Name                                                                          # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+POST     /authorize                                                                     18353     0(0.00%) |     10       1     172      9 |  611.38        0.00
+POST     /challenge                                                                     18354     0(0.00%) |      5       0     157      5 |  611.41        0.00
+POST     /keys/enroll                                                                      40     0(0.00%) |     39      14      86     34 |    1.33        0.00
+POST     /login                                                                            40     0(0.00%) |     26      10      43     26 |    1.33        0.00
+POST     proxy /v1/chat/completions                                                     18348     0(0.00%) |     22      19     101     22 |  611.21        0.00
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                                                                     55135     0(0.00%) |     12       0     172     10 | 1836.67        0.00
+
+Response time percentiles (approximated)
+Type     Name                                                                                  50%    66%    75%    80%    90%    95%    98%    99%  99.9% 99.99%   100% # reqs
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+POST     /authorize                                                                              9     12     14     15     19     23     27     30     58    170    170  18353
+POST     /challenge                                                                              5      6      7      8     10     11     14     16     59    130    160  18354
+POST     /keys/enroll                                                                           34     36     47     57     78     84     87     87     87     87     87     40
+POST     /login                                                                                 26     28     33     36     40     43     43     43     43     43     43     40
+POST     proxy /v1/chat/completions                                                             22     22     23     23     24     25     26     28     44     81    100  18348
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+         Aggregated                                                                             10     21     22     22     23     24     26     28     58    160    170  55135
+
