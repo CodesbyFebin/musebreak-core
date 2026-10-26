@@ -47,6 +47,9 @@ app.add_typer(code_app, name="code")
 app.add_typer(audit_app, name="audit")
 app.add_typer(config_app, name="config")
 
+zkvm_app = typer.Typer(help="Trust Plane hash-commitment prove/verify (NOT real ZK).")
+app.add_typer(zkvm_app, name="zkvm")
+
 console = Console()
 STATE = os.path.expanduser("~/.musebreak")
 # Process-local sandbox so spawn→exec works in one CLI process; persisted agent table for list.
@@ -446,6 +449,84 @@ def config_show():
     """Show effective CLI config."""
     console.print_json(data=CONFIG.as_dict())
 
+
+
+# ─── zkvm / voice / learn (Trust Plane + scaffolds) ───────────────────────────
+
+@zkvm_app.command("prove")
+def zkvm_prove(
+    circuit: str = typer.Option("order_approve", "--circuit", "-c"),
+    demo: bool = typer.Option(True, "--demo/--no-demo", help="Use built-in demo order payload"),
+    public_json: str = typer.Option(None, "--public", help="JSON public_inputs"),
+    witness_json: str = typer.Option(None, "--witness", help="JSON private_witness"),
+):
+    """Prove a circuit statement (hash-commitment MVP — simulated:true)."""
+    from . import zkvm_cmd
+    try:
+        if demo and not public_json:
+            payload = zkvm_cmd.demo_order_payload()
+            circuit = payload["circuit"]
+            pub, wit = payload["public_inputs"], payload["private_witness"]
+        else:
+            pub = json.loads(public_json or "{}")
+            wit = json.loads(witness_json or "{}")
+        proof = zkvm_cmd.prove(circuit, pub, wit)
+        console.print(Panel.fit(
+            json.dumps({k: proof[k] for k in
+                        ("circuit", "statement_hash_hex", "simulated", "implementation",
+                         "prover_time_ms", "version", "note") if k in proof}, indent=2),
+            title="zkvm prove (hash-commitment-mvp)",
+            border_style="green",
+        ))
+        console.print(f"proof_b64 length (chars): {len(proof['proof_b64'])}")
+        _ok(f"statement={proof['statement_hash_hex'][:16]}… simulated={proof['simulated']}")
+    except Exception as e:
+        _err(str(e))
+        raise typer.Exit(1)
+
+
+@zkvm_app.command("verify")
+def zkvm_verify(
+    proof_b64: str = typer.Option(..., "--proof", "-p"),
+    statement_hash_hex: str = typer.Option(..., "--hash", "-H"),
+):
+    """Verify a hash-commitment proof encoding."""
+    from . import zkvm_cmd
+    res = zkvm_cmd.verify(proof_b64, statement_hash_hex)
+    console.print(json.dumps(res, indent=2))
+    if res.get("verified"):
+        _ok("verified (hash-commitment-mvp)")
+    else:
+        _err(f"not verified: {res.get('reason')}")
+        raise typer.Exit(1)
+
+
+@app.command("voice")
+def voice_cmd(lang: str = typer.Option("ml", "--lang", "-l", help="Language code (default ml=Malayalam)")):
+    """Voice stub — SeamlessM4T not loaded in CI; labelled scaffold."""
+    _warn(f"voice --lang {lang}: SCAFFOLD — SeamlessM4T weights not present; no audio synthesized.")
+    console.print(Panel.fit(
+        f"lang={lang}\nsimulated=true\nnote=Install vision-extras / SeamlessM4T for real TTS/ASR",
+        title="musebreak voice (stub)",
+        border_style="yellow",
+    ))
+
+
+@app.command("learn")
+def learn_cmd(
+    topic: str = typer.Option("trust-plane", "--topic", "-t"),
+):
+    """Learn stub — interactive trainer not shipped yet."""
+    _warn("learn: SCAFFOLD — curriculum runner not implemented; showing static tip.")
+    console.print(Panel.fit(
+        f"topic={topic}\n"
+        "1. Gate1+Gate2 before any Wonder call\n"
+        "2. Trust Plane is hash-commitment-mvp (not ZK yet)\n"
+        "3. scope.yaml / dry-run default / human approve for exec\n"
+        "Future: mission packs under cli/missions/",
+        title="musebreak learn (stub)",
+        border_style="cyan",
+    ))
 
 def run():
     app()

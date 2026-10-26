@@ -66,6 +66,24 @@ cd frontend && npm install && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run 
 ```
 Demo login: `judge` / `musebreak` (change via `DEMO_USER` / `DEMO_PASSWORD`).
 
+## Trust Plane (hash-commitment MVP)
+
+> **Not a real ZK proof.** `backend/zkvm/` commits statements with SHA-256 over canonical JSON.
+> Proof encoding is 32-byte digest + 224 zero bytes (256 bytes total) — an encoding artifact.
+> Responses include `simulated: true` and `implementation: "hash-commitment-mvp"`.
+> Future work: SP1 / RISC Zero. Details: [`docs/TRUST_PLANE.md`](docs/TRUST_PLANE.md).
+
+```bash
+# from backend/
+pytest -q tests/test_zkvm.py
+# CLI
+musebreak zkvm prove --demo
+musebreak voice --lang ml   # scaffold
+musebreak learn             # scaffold
+# UI
+# http://localhost:3000/verify
+```
+
 ## Run with Docker
 ```bash
 cp .env.example .env   # set JWT_SECRET, REDIS_PASSWORD, ENROLL_TOKEN (deploy_and_test.sh can generate them)

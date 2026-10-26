@@ -278,3 +278,17 @@ def muse_query(req: QueryReq, w: dict = Depends(wonder)):
 @app.get("/audit")
 def get_audit(limit: int = 50):
     return {"chain_valid": audit.verify_chain(), "entries": audit.read()[-limit:]}
+
+
+# ---------------- Trust Plane (hash-commitment MVP) ----------------
+# NOT a real ZK proof system. See docs/TRUST_PLANE.md.
+try:
+    from zkvm.router import router as zkvm_router
+    from metakey.orders import orders_router, audit_verify_router
+    app.include_router(zkvm_router)
+    app.include_router(orders_router)
+    app.include_router(audit_verify_router)
+except Exception as _zkvm_err:  # pragma: no cover — import surface for local runs
+    import logging
+    logging.getLogger("musebreak").warning("zkvm routers not mounted: %s", _zkvm_err)
+
