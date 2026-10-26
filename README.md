@@ -84,7 +84,10 @@ musebreak voice --lang ml   # scaffold
 musebreak learn             # scaffold
 # UI
 # http://localhost:3000/verify
+# http://localhost:3000/auth   (MetaKey UTR + WebAuthn binding)
 ```
+
+**MetaKey online plane:** `/auth/draft` → `/auth/bind` (real WebAuthn assertion verification via `webauthn`, with a labelled simulated fallback) → `/auth/approve` → `/auth/verify`, committed by the `fido_binding` circuit. The physical MetaKey (FIDO2 certification, IP68, secure element, wallet) is a product concept only — see [`docs/METAKEY_PRODUCT.md`](docs/METAKEY_PRODUCT.md).
 
 ## Run with Docker
 ```bash

@@ -6,3 +6,4 @@ redis>=5.0
 httpx>=0.27
 pydantic>=2.6
 pytest>=8.0
+webauthn>=2.0

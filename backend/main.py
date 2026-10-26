@@ -288,6 +288,8 @@ try:
     app.include_router(zkvm_router)
     app.include_router(orders_router)
     app.include_router(audit_verify_router)
+    from metakey.fido_auth import auth_router
+    app.include_router(auth_router)
 except Exception as _zkvm_err:  # pragma: no cover — import surface for local runs
     import logging
     logging.getLogger("musebreak").warning("zkvm routers not mounted: %s", _zkvm_err)

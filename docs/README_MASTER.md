@@ -25,7 +25,7 @@ flowchart LR
   S[CLI swarm / command-center] -.mock.-> C[Firecracker Kali microVM cage<br/>cage/*]
 ```
 
-## Inventory (125 tracked files at this release)
+## Inventory
 | Area | Paths |
 |---|---|
 | Backend (FastAPI) | `backend/main.py` (`/health /login /challenge /authorize /keys/enroll /muse/query /audit`), `crypto.py`, `store.py`, `audit.py`, `guard/`, `metabolic_sim.py`, `open_source.py` |
@@ -48,6 +48,8 @@ flowchart LR
 | Guard regex prefilter, fail-closed | **Real**; LLM review needs your vLLM/Llama Guard |
 | Go proxy token + fingerprint verification | **Real** (Go tests) |
 | Trust Plane prove/verify roundtrip, 5 circuit checks | **Real hash commitment — NOT zero-knowledge**. `implementation: "hash-commitment-mvp"`, `simulated: true`. The 256-byte proof is a 32-byte digest + zero padding (encoding artifact). |
+| MetaKey `/auth` FIDO binding: UTR draft → WebAuthn assertion → `fido_binding` commitment → MuV approve → verify | **Real** WebAuthn signature verification (py_webauthn) for registered credentials; UTR replay rejected. Simulated assertion fallback is labelled `simulated_assertion: true`. State in-memory. |
+| MetaKey physical device (FIDO2 L2 cert, IP68, certified Secure Element, crypto wallet) | **Product concept / target** — not implemented or certified. See `docs/METAKEY_PRODUCT.md` |
 | Model responses when `META_MODEL_API_URL` unset | **Simulated** (labelled) |
 | Metabolic M1 latency/cost | **Simulator** |
 | CLI swarm agents, TUI stage walk (Perception→Reasoning→Voice→Action) | **Mocked** (`MUSEBREAK_MOCK=1`), labelled on screen |
@@ -58,7 +60,7 @@ flowchart LR
 | Load test | Harness real; numbers in `loadtest/results/` are from a local run only |
 
 ## Verified at this release
-- Backend `pytest`: **27 passed**
+- Backend `pytest`: **34 passed**
 - CLI `pytest tests`: **15 passed**
 - Go proxy `go test`: **2 tests passed**
 - Frontend `npm run build`: **succeeds** (all routes static-prerendered)
@@ -73,7 +75,7 @@ node hardware/metakey_sim.js http://localhost:8000
 # Go proxy
 (cd loadtest && uvicorn mock_upstream:app --port 9000 &)
 cd proxy && go test ./... && UPSTREAM_URL=http://localhost:9000 go run .
-# Frontend  → http://localhost:3000  (/, /swarm, /verify)
+# Frontend  → http://localhost:3000  (/, /swarm, /verify, /auth)
 cd frontend && npm install && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
 # CLI + TUI
 pip install -e cli && export MUSEBREAK_MOCK=1
