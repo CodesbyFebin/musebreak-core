@@ -34,6 +34,11 @@ musebreak audit tail
 musebreak audit log --tail 50
 musebreak models list
 musebreak config show
+
+musebreak command-center          # Textual TUI — live swarm (SIMULATED by default)
+musebreak zkvm prove --circuit order_approve
+musebreak voice --lang ml         # scaffold
+musebreak learn --topic trust-plane
 ```
 
 ## Agent roster / open equivalents
@@ -50,3 +55,19 @@ musebreak config show
 These are **labeled open equivalents** — we do not assert a proprietary Meta Muse endpoint. All model calls go through the existing gateway (2-gate auth + guard + audit) when `MUSEBREAK_MOCK=0`.
 
 See `docs/CLI_SWARM_DESIGN.md` for architecture and the safety model.
+
+## Command center TUI
+
+```bash
+musebreak command-center
+# keys: q quit · r re-run demo · s spawn mock Kali VM
+```
+
+Built with `textual` + `rich`. Panels:
+
+- **Agents** — CLI `AGENT_ROSTER` / launched instances (`agents.py`, `model_router.py`)
+- **Pipeline** — Perception → Reasoning → Voice → Action (maps onto `backend/agents/*` + CLI swarm)
+- **Kali MicroVMs** — `SandboxManager` mock sessions (labelled **SIMULATED** unless Firecracker+rootfs are actually live)
+- **Audit / event stream** — local hash-chained audit tail + demo ticks
+
+**Honesty:** the TUI starts in simulated mode (`MUSEBREAK_MOCK=1`). Unmeasured telemetry is badged SIMULATED / ILLUSTRATIVE in the UI itself — no fabricated asset counts, proof timings, CVE IDs, or costs.

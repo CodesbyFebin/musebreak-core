@@ -131,3 +131,33 @@ def test_code_run_dry_run_and_diff():
     out2 = code_run("add input validation to login handler", mock=True,
                     authorized=True, approver="ciso@lab", audit_path=_audit())
     assert out2["applied"] is True
+
+
+def test_command_center_smoke():
+    """TUI imports, composes, and stays labelled simulated."""
+    from musebreak_cli.command_center import smoke_check, PIPELINE_STAGES, AGENT_ROSTER
+    # AGENT_ROSTER is re-exported? import from model_router via module
+    from musebreak_cli.model_router import AGENT_ROSTER as roster
+    out = smoke_check()
+    assert out["ok"] is True
+    assert out["simulated"] is True
+    assert out["banner_has_simulated"] is True
+    assert out["agents_rows"] >= len(roster)  # at least the roster size after launch
+    assert out["pipeline_ids"] == ["perception", "reasoning", "voice", "action"]
+    assert {s["id"] for s in PIPELINE_STAGES} == {"perception", "reasoning", "voice", "action"}
+    # Every pipeline agent name must exist either in CLI roster or backend agent roles
+    backend_roles = {
+        "perception", "recon", "probe", "chain", "prove", "voice", "remediation",
+    }
+    cli_roles = set(roster.keys())
+    known = backend_roles | cli_roles
+    for stage in PIPELINE_STAGES:
+        for a in stage["agents"]:
+            assert a in known, f"invented agent {a!r} not in repo"
+
+
+def test_command_center_typer_registered():
+    from musebreak_cli.main import app
+    from typer.main import get_command
+    names = get_command(app).list_commands(None)
+    assert "command-center" in names

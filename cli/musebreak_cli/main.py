@@ -528,6 +528,21 @@ def learn_cmd(
         border_style="cyan",
     ))
 
+
+@app.command("command-center")
+def command_center_cmd(
+    no_demo: bool = typer.Option(False, "--no-demo", help="Skip auto demo swarm pass on mount"),
+    simulated: bool = typer.Option(True, "--simulated/--live-claim",
+                                   help="Honesty default: keep SIMULATED banner (live-claim still shows simulated telemetry unless real sources exist)"),
+):
+    """Textual TUI — live swarm view (Perception→Reasoning→Voice→Action). Simulated by default."""
+    from .command_center import run_command_center
+    if not simulated:
+        _warn(" --live-claim requested, but this TUI still labels unmeasured panes as SIMULATED.")
+    _ok("launching command-center TUI (q quit · r re-run · s spawn mock Kali VM)")
+    run_command_center(simulated=True, auto_demo=not no_demo)
+
+
 def run():
     app()
 
