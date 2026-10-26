@@ -161,3 +161,12 @@ def test_command_center_typer_registered():
     from typer.main import get_command
     names = get_command(app).list_commands(None)
     assert "command-center" in names
+
+
+def test_classify_task_size_open_routing():
+    from musebreak_cli.model_router import classify_task_size, SIZE_TO_MUSE
+    assert classify_task_size("hi") == "small"
+    assert classify_task_size("implement a unit test for login") == "medium"
+    assert classify_task_size("write a full threat model and security audit report") == "large"
+    assert classify_task_size("x", force_size="large") == "large"
+    assert "small" in SIZE_TO_MUSE and SIZE_TO_MUSE["small"][2] == "browser-webllm"

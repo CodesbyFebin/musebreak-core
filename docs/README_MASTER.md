@@ -29,11 +29,12 @@ flowchart LR
 | Area | Paths |
 |---|---|
 | Backend (FastAPI) | `backend/main.py` (`/health /login /challenge /authorize /keys/enroll /muse/query /audit`), `crypto.py`, `store.py`, `audit.py`, `guard/`, `metabolic_sim.py`, `open_source.py` |
-| Trust Plane | `backend/zkvm/` (canonical, hash, prover, verifier, router `/zkvm/circuits /prove /verify`), 5 circuits: order_approve, audit_chain, utr_unique, vuln_chain, business_isolation; `backend/metakey/orders.py` |
+| Trust Plane | `backend/zkvm/` (canonical, hash, prover, verifier, router `/zkvm/circuits /prove /verify`), 6 circuits: order_approve, audit_chain, utr_unique, vuln_chain, business_isolation, fido_binding; `backend/metakey/orders.py` |
 | Agents | `backend/agents/` 7 agents + `orchestrator_v2.py` (scaffolds/mocked) |
 | Model clients | `backend/meta_clients/` (gateway, open_weights) |
 | Go proxy | `proxy/main.go` + `main_test.go` |
-| Frontend (Next.js 14) | Access Control `/`, `/swarm` Claw Harness, `/verify`, plus `/audit /demo /legacy /metakeys /routing /sessions /settings` |
+| Frontend (Next.js 14) | Access Control `/`, **Business OS `/os` (WebLLM)**, `/swarm` Claw Harness, `/verify`, `/auth`, plus `/audit /demo /legacy /metakeys /routing /sessions /settings` |
+| Business OS plane | `backend/os_plane/` task router + Jev + zkVM heartbeat; `docs/BUSINESS_OS.md` |
 | CLI / TUI | `cli/musebreak_cli/` — `auth key swarm agent(s) kali sandbox code audit config zkvm models voice learn login command-center` |
 | Hardware | `hardware/metakey_sim.js`, `metakey_esp32.ino`, `WIRING.md`, demo PEM keys; `firmware/metakey_auth.c` |
 | Cage | `cage/vm_manager.py`, `network_jail.py`, `fetch_firecracker.sh` |
@@ -60,8 +61,8 @@ flowchart LR
 | Load test | Harness real; numbers in `loadtest/results/` are from a local run only |
 
 ## Verified at this release
-- Backend `pytest`: **34 passed**
-- CLI `pytest tests`: **15 passed**
+- Backend `pytest`: **41 passed**
+- CLI `pytest tests`: **16 passed**
 - Go proxy `go test`: **2 tests passed**
 - Frontend `npm run build`: **succeeds** (all routes static-prerendered)
 
@@ -75,8 +76,9 @@ node hardware/metakey_sim.js http://localhost:8000
 # Go proxy
 (cd loadtest && uvicorn mock_upstream:app --port 9000 &)
 cd proxy && go test ./... && UPSTREAM_URL=http://localhost:9000 go run .
-# Frontend  → http://localhost:3000  (/, /swarm, /verify, /auth)
+# Frontend  → http://localhost:3000  (/, /os, /swarm, /verify, /auth)
 cd frontend && npm install && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
+# Business OS (WebLLM) → http://localhost:3000/os   (needs WebGPU browser)
 # CLI + TUI
 pip install -e cli && export MUSEBREAK_MOCK=1
 musebreak command-center         # q quit, r re-run, s spawn mock Kali VM

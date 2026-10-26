@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 
 const NAV = [
   { href: "/", label: "Overview", kbd: "1", icon: "◈" },
+  { href: "/os", label: "Business OS", kbd: "0", icon: "▣" },
   { href: "/swarm", label: "Swarm Control", kbd: "7", icon: "⬡" },
   { href: "/verify", label: "Trust Verify", kbd: "8", icon: "✓" },
   { href: "/auth", label: "MetaKey Auth", kbd: "9", icon: "⚷" },

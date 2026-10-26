@@ -129,3 +129,39 @@ class ModelRouter:
         out["tier"] = out.get("tier", r.tier)
         out["open_equivalent"] = r.open_equivalent
         return out
+
+
+# --- Open routing size ladder (shared concept with backend/os_plane) ---
+import re as _re
+
+_LARGE = _re.compile(
+    r"\b(architect|refactor\s+(entire|whole|all)|migrate\s+codebase|"
+    r"multi[- ]?agent|security\s+audit\s+report|threat\s+model|"
+    r"wonder\s*full|muse\s*wonder|70b|large\s+model)\b",
+    _re.I,
+)
+_MEDIUM = _re.compile(
+    r"\b(code|patch|fix|implement|write\s+function|unit\s*test|"
+    r"docker|kubernetes|sql|api\s+design|muse\s*code|codellama)\b",
+    _re.I,
+)
+
+SIZE_TO_MUSE = {
+    "small": ("muse-spark", "Llama-3.2-1B-Instruct-q4f32_1-MLC", "browser-webllm"),
+    "medium": ("muse-code", "CodeLlama-13b-Instruct", "api"),
+    "large": ("muse-wonder", "Llama-3.3-70B-Instruct", "api"),
+}
+
+
+def classify_task_size(prompt: str, force_size: str | None = None) -> str:
+    """small → WebLLM free; medium → Muse Code; large → Muse Wonder Full."""
+    if force_size in SIZE_TO_MUSE:
+        return force_size
+    text = (prompt or "").strip()
+    if not text:
+        return "small"
+    if _LARGE.search(text) or len(text) > 1200:
+        return "large"
+    if _MEDIUM.search(text) or len(text) > 280:
+        return "medium"
+    return "small"

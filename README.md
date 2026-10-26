@@ -1,5 +1,7 @@
 # MuseBreak 🔑 — Zero-Trust gateway for Muse models
 
+Zero-Trust gateway + **Business OS** (`/os`, WebLLM). See [`docs/README_MASTER.md`](docs/README_MASTER.md) and [`docs/BUSINESS_OS.md`](docs/BUSINESS_OS.md).
+
 > **No password alone can reach Muse Wonder.** You need a physical **MetaKey**: NFC tap + QR intent.
 > Both gates pass → forward. MIT licensed.
 
@@ -31,7 +33,8 @@ hard-code any real Meta endpoint; when unset, `/muse/query` returns a response c
 | `backend/guard/review_engine.py` | regex prefilter + OpenAI-compatible LLM review (vLLM), **fail-closed** |
 | `backend/tests/test_gates.py` | pytest: happy path, replay, expiry, bad HMAC, bad QR sig, no Gate1, counter, guard… |
 | `proxy/` | Go reverse proxy: verifies HS256 Wonder token + fingerprint binding (stdlib only) + tests |
-| `frontend/` | Next.js 14 app router: Access Control (Gate1/2) + **Swarm Control** (`/swarm`) command center |
+| `frontend/` | Next.js 14: Access Control, **Business OS `/os` (WebLLM)**, Swarm `/swarm`, `/auth`, `/verify` |
+| `backend/os_plane/` | Task router, Jev gate, zkVM heartbeat (`docs/BUSINESS_OS.md`) |
 | `hardware/metakey_sim.js` | Node phone sim — same HMAC + P-256 as firmware; runs the full E2E flow |
 | `hardware/metakey_esp32.ino` | ESP32 + PN532 + e-ink prototype (NVS counter) |
 | `hardware/WIRING.md` | STM32 + SE050 (I²C 0x48) + PN532 (SPI) + e-ink (SPI) reference wiring |
