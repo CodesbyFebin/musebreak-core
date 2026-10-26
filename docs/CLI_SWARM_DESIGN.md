@@ -24,14 +24,17 @@ Go proxy — never directly to a model. The swarm runs inside, and operates on, 
 | Sandbox manager | `sandbox.py` | wraps `cage/vm_manager.py` + `network_jail.py`; **mock** when KVM/rootfs absent |
 | Mission schema | `missions/*.yaml` | objective, scope, `authorized`, `human_approver`, `max_steps`, roles |
 
-## 3. Agent roles
-| Role | Responsibility | Executes in sandbox? |
-|---|---|---|
-| **Planner** | Decompose the mission objective into bounded steps | no |
-| **Recon-Analyst** | Read-only analysis of provided lab scope/data | no |
-| **ExploitDev** *(defensive/lab-only)* | Draft validation/hardening plans; propose checks | only the validation step, and only when authorized |
-| **Reviewer / Guard** | Second-opinion safety review of findings/plans | no |
-| **Reporter** | Author the authorized lab report | no |
+## 3. Agent roles (operator-console roster)
+| Role | Model (label) | Open equivalent | Responsibility | VM |
+|---|---|---|---|---|
+| **orchestrator** | Muse Wonderful | Llama-3-70B | Decompose the mission; coordinate workers | — |
+| **recon** | Llama-3-8B | Llama-3-8B | Defensive asset inventory on OWN lab only (e.g. `nmap -sV`) | kali |
+| **code** | Muse Code | Code Llama | Plan/write defensive patches | kali |
+| **review** | Llama-Guard-3-8B + Llama-3-70B | same | Prefilter + deep safety review (fail-closed) | — |
+| **analyzer** | Muse Wonderful-Cyber (red) | Llama-3-70B | Vuln→mitigation mapping ONLY — no exploit gen | kali |
+| **report** | Llama-3-70B | Llama-3-70B | Authorized lab report | — |
+
+Open equivalents are **labels** — we do not assert a proprietary Meta Muse endpoint. Legacy aliases (`planner`→orchestrator, `exploitdev`→analyzer, …) still route.
 
 ## 4. Model routing tiers
 Ladder (most → least capable): `wonderful-cyber` > `wonderful` > `wonder` > `spark` > `glimmer`/`llama` (open-weight).

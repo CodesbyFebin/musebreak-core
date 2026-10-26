@@ -1,0 +1,2 @@
+[console_scripts]
+musebreak = musebreak_cli.main:run

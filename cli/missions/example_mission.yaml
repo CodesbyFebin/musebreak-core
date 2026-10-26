@@ -1,8 +1,8 @@
 # MuseBreak swarm mission. Authorized, isolated LAB use only.
 name: lab-webapp-hardening
 objective: Assess and harden the intentionally-vulnerable lab web app running inside the Kali sandbox.
-scope: lab-only            # systems you own / are explicitly authorized to test, inside the sandbox
-authorized: false          # must be true (CLI --i-am-authorized) before any exec step runs; else dry-run
-human_approver:            # e.g. "jane.doe@example.com (CISO sign-off #1234)"; required for red-tier exec
+scope: lab-only
+authorized: false
+human_approver:
 max_steps: 6
-roles: [planner, recon-analyst, exploitdev, reviewer, reporter]
+roles: [orchestrator, recon, analyzer, review, report]
