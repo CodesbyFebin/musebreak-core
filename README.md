@@ -29,7 +29,7 @@ hard-code any real Meta endpoint; when unset, `/muse/query` returns a response c
 | `backend/guard/review_engine.py` | regex prefilter + OpenAI-compatible LLM review (vLLM), **fail-closed** |
 | `backend/tests/test_gates.py` | pytest: happy path, replay, expiry, bad HMAC, bad QR sig, no Gate1, counter, guard… |
 | `proxy/` | Go reverse proxy: verifies HS256 Wonder token + fingerprint binding (stdlib only) + tests |
-| `frontend/` | Next.js 14 app router: Login → Gate1 → NFC tap → QR scan → Forward → query → audit |
+| `frontend/` | Next.js 14 app router: Access Control (Gate1/2) + **Swarm Control** (`/swarm`) command center |
 | `hardware/metakey_sim.js` | Node phone sim — same HMAC + P-256 as firmware; runs the full E2E flow |
 | `hardware/metakey_esp32.ino` | ESP32 + PN532 + e-ink prototype (NVS counter) |
 | `hardware/WIRING.md` | STM32 + SE050 (I²C 0x48) + PN532 (SPI) + e-ink (SPI) reference wiring |
