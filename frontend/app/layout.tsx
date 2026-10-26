@@ -1,5 +1,12 @@
 import "./globals.css";
-export const metadata = { title: "MuseBreak — Zero-Trust gateway for Muse", description: "2-gate MetaKey auth" };
+export const metadata = {
+  title: "MuseBreak — Access Control",
+  description: "Zero-Trust two-gate authorization for Muse models",
+};
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en"><body>{children}</body></html>;
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
 }

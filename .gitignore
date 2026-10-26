@@ -9,3 +9,5 @@ hardware/.metakey_sim_counter_*
 .metakey_counter
 loadtest/results/*.csv
 *.tsbuildinfo
+
+frontend/dashboard-shot.png

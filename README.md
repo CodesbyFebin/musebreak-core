@@ -89,6 +89,23 @@ Anyone can impersonate the demo key. For any real use, enrol your own keys (`too
 `METAKEY_ID/METAKEY_SECRET/METAKEY_PUBKEY_PEM`, and keep secrets in a secure element.
 
 
+
+## Access Control web command center
+The Next.js frontend (`frontend/`) ships a dark neon **ACCESS CONTROL** dashboard that mirrors the two-gate flow:
+
+```bash
+# terminal A — gateway
+uvicorn backend.main:app --reload --port 8000
+# terminal B — UI
+cd frontend && npm install && npm run dev
+# open http://localhost:3000
+```
+
+- Sidebar: Overview · Sessions · MetaKeys · Model routing · Audit log · Settings (`⌘1`–`⌘6`).
+- Overview runs Gate1 on load (when the gateway is reachable), shows live session/challenge countdowns, and the **SIMULATE TAP & APPROVE** button executes the real Gate2 flow via `lib/metakey.ts` (NFC HMAC + P-256 QR) → `/authorize`.
+- When the gateway is unreachable the UI falls back to a clearly-labeled **LOCAL DEMO / SIMULATOR** mode — never presents fake data as live.
+- Classic step-by-step demo remains at `/legacy`. Audit table at `/audit` reads `GET /audit`.
+
 ## Command center CLI + agent swarm
 A `musebreak` CLI drives a **sandboxed, role-based agent swarm** on top of the gateway. It runs offline in mock
 mode by default, and every step is wrapped by the 2-gate auth + guard + audit model. Exec steps inside the
