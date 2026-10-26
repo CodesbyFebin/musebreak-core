@@ -35,6 +35,7 @@ hard-code any real Meta endpoint; when unset, `/muse/query` returns a response c
 | `proxy/` | Go reverse proxy: verifies HS256 Wonder token + fingerprint binding (stdlib only) + tests |
 | `frontend/` | Next.js 14: Access Control, **Business OS `/os` (WebLLM)**, Swarm `/swarm`, `/auth`, `/verify` |
 | `backend/os_plane/` | Task router, Jev gate, zkVM heartbeat (`docs/BUSINESS_OS.md`) |
+| `cli/musebreak_cli/benchmark.py` | Benchmark open-weight models as defensive agents (`docs/BENCHMARK_HARNESS.md`) |
 | `hardware/metakey_sim.js` | Node phone sim — same HMAC + P-256 as firmware; runs the full E2E flow |
 | `hardware/metakey_esp32.ino` | ESP32 + PN532 + e-ink prototype (NVS counter) |
 | `hardware/WIRING.md` | STM32 + SE050 (I²C 0x48) + PN532 (SPI) + e-ink (SPI) reference wiring |

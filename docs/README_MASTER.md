@@ -35,7 +35,8 @@ flowchart LR
 | Go proxy | `proxy/main.go` + `main_test.go` |
 | Frontend (Next.js 14) | Access Control `/`, **Business OS `/os` (WebLLM)**, `/swarm` Claw Harness, `/verify`, `/auth`, plus `/audit /demo /legacy /metakeys /routing /sessions /settings` |
 | Business OS plane | `backend/os_plane/` task router + Jev + zkVM heartbeat; `docs/BUSINESS_OS.md` |
-| CLI / TUI | `cli/musebreak_cli/` — `auth key swarm agent(s) kali sandbox code audit config zkvm models voice learn login command-center` |
+| Benchmark harness | `cli/musebreak_cli/benchmark.py` — scores open-weight models as defensive agents on synthetic tasks; `docs/BENCHMARK_HARNESS.md` |
+| CLI / TUI | `cli/musebreak_cli/` — `auth key swarm agent(s) kali sandbox code audit config zkvm models voice learn login command-center benchmark` |
 | Hardware | `hardware/metakey_sim.js`, `metakey_esp32.ino`, `WIRING.md`, demo PEM keys; `firmware/metakey_auth.c` |
 | Cage | `cage/vm_manager.py`, `network_jail.py`, `fetch_firecracker.sh` |
 | Open stack | `docker-compose.open.yml`, `llama-stack-run.yaml`, `services/{sam,dinov2,seamlessm4t}`, `docs/OPEN_SOURCE_STACK.md` |
@@ -54,6 +55,7 @@ flowchart LR
 | Model responses when `META_MODEL_API_URL` unset | **Simulated** (labelled) |
 | Metabolic M1 latency/cost | **Simulator** |
 | CLI swarm agents, TUI stage walk (Perception→Reasoning→Voice→Action) | **Mocked** (`MUSEBREAK_MOCK=1`), labelled on screen |
+| Benchmark harness scores | **Real scorer + guard loop** (tested). On a headless box no model runs, so models report `UNAVAILABLE` and scores are from a fixed oracle labelled `simulated: true` — never presented as real model capability. Real scores require `META_MODEL_API_URL`/`LLAMA_STACK_URL` + `MUSEBREAK_MOCK=0`. |
 | Kali microVMs, CPU/MEM, boot logs (CLI, TUI, `/swarm`) | **Simulated** — needs Linux host with KVM + Firecracker; not run in CI |
 | `voice`, `learn`, most backend agents | **Scaffolds** |
 | Firmware / ESP32 / STM32 wiring | Reference code, not validated on hardware here |
@@ -62,7 +64,7 @@ flowchart LR
 
 ## Verified at this release
 - Backend `pytest`: **41 passed**
-- CLI `pytest tests`: **16 passed**
+- CLI `pytest tests`: **27 passed**
 - Go proxy `go test`: **2 tests passed**
 - Frontend `npm run build`: **succeeds** (all routes static-prerendered)
 
@@ -82,6 +84,7 @@ cd frontend && npm install && NEXT_PUBLIC_API_URL=http://localhost:8000 npm run 
 # CLI + TUI
 pip install -e cli && export MUSEBREAK_MOCK=1
 musebreak command-center         # q quit, r re-run, s spawn mock Kali VM
+musebreak benchmark run          # score open-weight models as defensive agents (simulated offline)
 musebreak zkvm prove --demo
 # Open Meta stack
 docker compose -f docker-compose.open.yml up -d

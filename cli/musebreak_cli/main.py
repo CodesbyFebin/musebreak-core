@@ -50,6 +50,9 @@ app.add_typer(config_app, name="config")
 zkvm_app = typer.Typer(help="Trust Plane hash-commitment prove/verify (NOT real ZK).")
 app.add_typer(zkvm_app, name="zkvm")
 
+bench_app = typer.Typer(help="Benchmark open-weight models as defensive agents (synthetic, sandboxed).")
+app.add_typer(bench_app, name="benchmark")
+
 console = Console()
 STATE = os.path.expanduser("~/.musebreak")
 # Process-local sandbox so spawn→exec works in one CLI process; persisted agent table for list.
@@ -541,6 +544,70 @@ def command_center_cmd(
         _warn(" --live-claim requested, but this TUI still labels unmeasured panes as SIMULATED.")
     _ok("launching command-center TUI (q quit · r re-run · s spawn mock Kali VM)")
     run_command_center(simulated=True, auto_demo=not no_demo)
+
+
+# ─── benchmark (multi-model agent harness) ────────────────────────────────────
+
+@bench_app.command("roles")
+def benchmark_roles():
+    """Show the bench role → model → canonical swarm role mapping (reconciled)."""
+    from .benchmark import bench_role_assignment
+    table = Table(title="Benchmark role weighting (defensive harness)", box=box.SIMPLE_HEAVY)
+    table.add_column("BENCH ROLE", style="cyan")
+    table.add_column("MUSE MODEL")
+    table.add_column("OPEN EQ", style="dim")
+    table.add_column("CANON ROLE")
+    table.add_column("W")
+    table.add_column("WHY", overflow="fold")
+    for r in bench_role_assignment():
+        canon = r["canonical_role"] + ("" if r["canonical_exists"] else " [red](missing!)[/]")
+        table.add_row(r["bench_role"], r["muse_model"], r["open_equivalent"],
+                      canon, str(r["weight"]), r["why"])
+    console.print(table)
+    console.print("[dim]Spark→exploit-writer · Wonder Full→discovery(lead) · Llama→monitor · Code→tooling[/]")
+
+
+@bench_app.command("models")
+def benchmark_models():
+    """List the model set under test and whether each can actually run here."""
+    from .benchmark import model_set, model_availability
+    table = Table(title=f"Benchmark model set (mock={CONFIG.mock})", box=box.SIMPLE_HEAVY)
+    table.add_column("OPEN MODEL", style="cyan"); table.add_column("BACKEND")
+    table.add_column("STATUS"); table.add_column("REASON", overflow="fold")
+    for e in model_set():
+        status, reason = model_availability(e, mock=CONFIG.mock)
+        style = "green" if status == "available" else "yellow"
+        table.add_row(e.open_equivalent, e.backend, f"[{style}]{status}[/]", reason)
+    console.print(table)
+
+
+@bench_app.command("run")
+def benchmark_run(
+    out: str = typer.Option(None, "--out", "-o", help="Write results JSON (default ~/.musebreak/benchmark.json)"),
+    json_only: bool = typer.Option(False, "--json", help="Print raw JSON instead of a table"),
+):
+    """Run the scored synthetic task suite across the model set. Honest: unavailable models are simulated."""
+    from .benchmark import run_benchmark, write_results
+    res = run_benchmark(mock=CONFIG.mock)
+    path = out or os.path.join(STATE, "benchmark.json")
+    CONFIG.ensure_state()
+    write_results(res, path)
+    if json_only:
+        console.print_json(data=res)
+        return
+    if res["simulated"]:
+        _warn("SIMULATED run — no real model executed; scores are from a fixed oracle over local fixtures.")
+    table = Table(title=f"Benchmark · {res['task_count']} tasks × {res['model_count']} models",
+                  box=box.SIMPLE_HEAVY)
+    table.add_column("OPEN MODEL", style="cyan"); table.add_column("ROLE")
+    table.add_column("STATUS"); table.add_column("COMPOSITE"); table.add_column("SUCCESS"); table.add_column("STEPS")
+    for m in res["results"]:
+        style = "green" if m["status"] == "available" else "yellow"
+        table.add_row(m["open_equivalent"], m["bench_role"], f"[{style}]{m['status']}[/]",
+                      f"{m['composite']:.3f}", f"{m['success_rate']:.3f}", str(m["total_steps"]))
+    console.print(table)
+    console.print(Panel.fit(res["note"], title="honesty", border_style="yellow"))
+    _ok(f"results written to {path}")
 
 
 def run():
