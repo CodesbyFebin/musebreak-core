@@ -3,6 +3,8 @@
 > **No password alone can reach Muse Wonder.** You need a physical **MetaKey**: NFC tap + QR intent.
 > Both gates pass → forward. MIT licensed.
 
+📘 **Full release briefing, architecture, Real-vs-Simulated table and run guide: [`docs/README_MASTER.md`](docs/README_MASTER.md)**
+
 ```
 Browser/Phone ──Gate1: /login (JWT 5 min, bound to sha256(device fingerprint))──► FastAPI gateway ──► Redis
       │        ──/challenge──► 32-byte secrets.token_bytes challenge + QR nonce (30 s TTL, single-use)
