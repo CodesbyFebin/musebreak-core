@@ -38,6 +38,11 @@ hard-code any real Meta endpoint; when unset, `/muse/query` returns a response c
 | `loadtest/` | Locust (master/workers) full-flow load test through the Go proxy + mock upstream |
 | `tools/enroll_dev_key.py` | generate + enrol a dev MetaKey, export `dev_key.json` |
 | `deploy_and_test.sh` | docker compose up + enrolled-key E2E (403 = failure, replay must be 401) |
+| `docker-compose.open.yml` | Open-weight Meta stack: OGX/Llama Stack + Ollama + gateway/proxy |
+| `llama-stack-run.yaml` | Reference Llama Stack run config (HF ids for inference/safety/vision) |
+| `backend/open_source.py` | `USE_OPEN_SOURCE_ONLY` adapter → OpenAI-compat Llama Stack |
+| `docs/OPEN_SOURCE_STACK.md` | Model map, verified ids, hardware honesty, run steps |
+| `services/{sam,dinov2,seamlessm4t}/` | Optional HF helpers (local Dockerfiles, profile `vision-extras`) |
 
 ## Run locally (no Docker)
 ```bash
@@ -123,6 +128,23 @@ Design + safety model: [`docs/CLI_SWARM_DESIGN.md`](docs/CLI_SWARM_DESIGN.md). R
 ExploitDev (defensive/lab-only), Reviewer/Guard, Reporter. Tiers: Muse Spark → Wonder → Wonderful/Wonderful-Cyber
 → Glimmer/Llama (open-weight). Muse Code is the agent runtime / tool-calling layer; all model calls route through
 the gateway.
+
+
+## Open-source stack
+Run MuseBreak offline with **open-weight Meta models only** (Llama Stack / OGX + Ollama) — no closed APIs.
+Compose file: [`docker-compose.open.yml`](docker-compose.open.yml). Full mapping, verified image/HF ids,
+hardware caveats, and run steps: [`docs/OPEN_SOURCE_STACK.md`](docs/OPEN_SOURCE_STACK.md).
+
+```bash
+cp .env.example .env   # set JWT_SECRET, REDIS_PASSWORD
+docker compose -f docker-compose.open.yml up --build
+# then pull models into the ollama service (see the doc — 70B needs serious GPU/quantization)
+```
+
+When `USE_OPEN_SOURCE_ONLY=true`, the gateway routes `/muse/query` and the guard at an OpenAI-compatible
+Llama Stack endpoint (`LLAMA_STACK_URL`, default port **8321**). If nothing is reachable, responses stay
+clearly labelled `SIMULATED`. Optional SAM / DINOv2 / SeamlessM4T helpers live under `services/` behind
+compose profile `vision-extras` (local Dockerfiles — we do not invent registry images).
 
 ## Master prompt
 See [`MASTER_PROMPT.md`](MASTER_PROMPT.md).

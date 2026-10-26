@@ -1,0 +1,122 @@
+# MuseBreak — 100% open-weight Meta stack (Llama Stack / OGX + Ollama)
+#
+# Base (light): redis + ollama + llama-stack + gateway + proxy
+#   docker compose -f docker-compose.open.yml up --build
+#
+# Heavy vision/speech extras (build local Dockerfiles; no invented registry images):
+#   docker compose -f docker-compose.open.yml --profile vision-extras up --build
+#
+# Verified images (2026-10-26):
+#   ogxai/distribution-starter:1.5.0  (digest sha256:7f24b91f… — current official; Llama Stack → OGX)
+#   ollama/ollama:latest              (Docker Hub ollama/ollama)
+#   redis:7-alpine                    (same as docker-compose.yml)
+# Archived / do NOT prefer: llamastack/distribution-ollama (Hub lists Archived)
+#
+# Models are NOT pulled or run by this compose file alone — see docs/OPEN_SOURCE_STACK.md.
+# Defaults below are HF ids as requested; for local Ollama pulls you will usually override
+# with ollama tags (llama3.3:70b, llama-guard3:8b, llama3.2-vision).
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}"]
+
+  ollama:
+    image: ollama/ollama:latest
+    ports: ["11434:11434"]
+    volumes: ["ollama_models:/root/.ollama"]
+    # GPU optional — uncomment deploy.resources when you have NVIDIA Container Toolkit:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+  llama-stack:
+    # Current official OGX/Llama Stack starter image (verified on Docker Hub).
+    image: ogxai/distribution-starter:1.5.0
+    ports: ["8321:8321"]
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      # Requested HF ids (open weights). Ollama provider may need ollama-style tags — override in .env.
+      INFERENCE_MODEL: ${INFERENCE_MODEL:-meta-llama/Llama-3.3-70B-Instruct}
+      SAFETY_MODEL: ${SAFETY_MODEL:-meta-llama/Llama-Guard-3-8B}
+      VISION_MODEL: ${VISION_MODEL:-meta-llama/Llama-3.2-11B-Vision-Instruct}
+      OGX_PORT: "8321"
+    volumes:
+      - ogx_home:/root/.ogx
+      - ./llama-stack-run.yaml:/root/llama-stack-run.yaml:ro
+    # Starter image is env-driven; the mounted YAML is a documented reference / optional --config.
+    depends_on: [ollama]
+
+  musebreak-gateway:
+    build: ./backend
+    ports: ["8000:8000"]
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      ENROLL_TOKEN: ${ENROLL_TOKEN:-}
+      DEMO_USER: ${DEMO_USER:-judge}
+      DEMO_PASSWORD: ${DEMO_PASSWORD:-musebreak}
+      USE_OPEN_SOURCE_ONLY: "true"
+      LLAMA_STACK_URL: http://llama-stack:8321
+      # OpenAI-compat roots (gateway + in-process guard)
+      META_MODEL_API_URL: http://llama-stack:8321/v1/chat/completions
+      META_MODEL_API_KEY: ${LLAMA_STACK_API_KEY:-none}
+      GUARD_LLM_URL: http://llama-stack:8321/v1
+      GUARD_LLM_MODEL: ${SAFETY_MODEL:-meta-llama/Llama-Guard-3-8B}
+      GUARD_REQUIRE_LLM: ${GUARD_REQUIRE_LLM:-0}
+      INFERENCE_MODEL: ${INFERENCE_MODEL:-meta-llama/Llama-3.3-70B-Instruct}
+      SAFETY_MODEL: ${SAFETY_MODEL:-meta-llama/Llama-Guard-3-8B}
+      VISION_MODEL: ${VISION_MODEL:-meta-llama/Llama-3.2-11B-Vision-Instruct}
+      AUDIT_PATH: /data/audit.jsonl
+    volumes: ["audit_open:/data"]
+    depends_on: [redis, llama-stack]
+    # Guard runs in-process inside the gateway (backend/guard) — not a separate container.
+
+  musebreak-proxy:
+    build: ./proxy
+    ports: ["8443:8443"]
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      # Point at Llama Stack OpenAI-compat when using the open stack; mock otherwise.
+      UPSTREAM_URL: ${UPSTREAM_URL:-http://llama-stack:8321}
+      LISTEN: ":8443"
+    depends_on: [llama-stack]
+
+  # ---- profile: vision-extras (optional, heavy; local Dockerfiles only) ----
+  # There is NO official facebook/sam2 / dinov2 / seamless Docker Hub image we verified.
+  # These services pip-install the real HF repos at build/run time.
+
+  sam:
+    profiles: ["vision-extras"]
+    build: ./services/sam
+    ports: ["8091:8091"]
+    environment:
+      HF_MODEL_ID: facebook/sam2.1-hiera-large
+      # Also on HF (gated): facebook/sam3 , facebook/sam3.1 — we default to ungated SAM 2.1.
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes: ["hf_cache:/root/.cache/huggingface"]
+
+  dinov2:
+    profiles: ["vision-extras"]
+    build: ./services/dinov2
+    ports: ["8092:8092"]
+    environment:
+      HF_MODEL_ID: facebook/dinov2-giant
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes: ["hf_cache:/root/.cache/huggingface"]
+
+  seamlessm4t:
+    profiles: ["vision-extras"]
+    build: ./services/seamlessm4t
+    ports: ["8093:8093"]
+    environment:
+      HF_MODEL_ID: facebook/seamless-m4t-v2-large
+      HF_TOKEN: ${HF_TOKEN:-}
+    volumes: ["hf_cache:/root/.cache/huggingface"]
+
+volumes:
+  audit_open:
+  ollama_models:
+  ogx_home:
+  hf_cache:

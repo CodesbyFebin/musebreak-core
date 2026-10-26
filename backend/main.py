@@ -21,6 +21,7 @@ import metabolic_sim
 from audit import AuditLog
 from store import make_store
 from guard.review_engine import review
+import open_source
 
 # ---------------- config ----------------
 JWT_SECRET = os.getenv("JWT_SECRET") or secrets.token_hex(32)
@@ -29,6 +30,10 @@ CHALLENGE_TTL = int(os.getenv("CHALLENGE_TTL", "30"))
 WONDER_TTL = int(os.getenv("WONDER_TTL", "60"))
 DEMO_USER = os.getenv("DEMO_USER", "judge")
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "musebreak")
+META_MODEL_API_URL = os.getenv("META_MODEL_API_URL", "")
+META_MODEL_API_KEY = os.getenv("META_MODEL_API_KEY", "")
+# Open-source-only mode: point META_MODEL_API_* + GUARD_LLM_* at Llama Stack / OGX
+_OPEN_CFG = open_source.apply_open_source_env()
 META_MODEL_API_URL = os.getenv("META_MODEL_API_URL", "")
 META_MODEL_API_KEY = os.getenv("META_MODEL_API_KEY", "")
 AUDIT_PATH = os.getenv("AUDIT_PATH", os.path.join(os.path.dirname(__file__), "data", "audit.jsonl"))
@@ -132,7 +137,8 @@ def wonder(authorization: str | None = Header(None), x_device_fingerprint: str |
 # ---------------- endpoints ----------------
 @app.get("/health")
 def health():
-    return {"ok": True, "store": type(store).__name__, "meta_api_configured": bool(META_MODEL_API_URL)}
+    return {"ok": True, "store": type(store).__name__, "meta_api_configured": bool(META_MODEL_API_URL),
+            "open_source": _OPEN_CFG}
 
 
 @app.post("/login")
@@ -227,21 +233,45 @@ def muse_query(req: QueryReq, w: dict = Depends(wonder)):
         audit.append("guard_block", sub=w["sub"], key_id=w["key_id"], model=model, verdict=verdict)
         raise HTTPException(403, {"guard": verdict})
     sim = metabolic_sim.infer(model, req.prompt, req.max_tokens) if model in METABOLIC_MODELS else None
+    open_meta = {}
     if META_MODEL_API_URL:
-        # Generic OpenAI-style chat payload; adapt to whatever endpoint you configure.
-        r = httpx.post(META_MODEL_API_URL, timeout=60,
-                       headers={"Authorization": f"Bearer {META_MODEL_API_KEY}"},
-                       json={"model": model, "max_tokens": req.max_tokens,
-                             "messages": [{"role": "user", "content": req.prompt}]})
-        r.raise_for_status()
-        upstream, simulated = r.json(), False
+        # OpenAI-compatible chat payload (Llama Stack / OGX / vLLM / etc.).
+        if open_source.use_open_source_only():
+            payload = open_source.build_chat_payload(model, req.prompt, req.max_tokens)
+            payload, open_meta = open_source.strip_internal_keys(payload)
+        else:
+            payload = {"model": model, "max_tokens": req.max_tokens,
+                       "messages": [{"role": "user", "content": req.prompt}]}
+        try:
+            r = httpx.post(META_MODEL_API_URL, timeout=60,
+                           headers={"Authorization": f"Bearer {META_MODEL_API_KEY}"},
+                           json=payload)
+            r.raise_for_status()
+            upstream, simulated = r.json(), False
+        except Exception as e:
+            # Reachable URL configured but upstream down → labelled simulated fallback
+            upstream, simulated = {
+                "text": (f"[SIMULATED RESPONSE — upstream unreachable: {type(e).__name__}: {e}] "
+                         f"model={open_meta.get('open_model_id') or model}. "
+                         f"{open_meta.get('open_label', '')}".strip()),
+            }, True
     else:
-        upstream, simulated = {"text": f"[SIMULATED RESPONSE — META_MODEL_API_URL not set] {model} would "
-                                       f"answer: '{req.prompt[:120]}'. Configure META_MODEL_API_URL/KEY "
-                                       f"to forward to a real endpoint."}, True
+        hint = ("Set USE_OPEN_SOURCE_ONLY=true and LLAMA_STACK_URL, or META_MODEL_API_URL/KEY, "
+                "to forward to a real OpenAI-compatible endpoint.")
+        label = ""
+        if open_source.use_open_source_only():
+            _, label = open_source.resolve_model_id(model)
+        upstream, simulated = {"text": (f"[SIMULATED RESPONSE — META_MODEL_API_URL not set] "
+                                        f"{model} ({label or 'no open mapping'}) would answer: "
+                                        f"'{req.prompt[:120]}'. {hint}")}, True
     entry = audit.append("muse_query", sub=w["sub"], device_fp=w["fp"], key_id=w["key_id"], model=model,
-                         routed_to="metabolic_sim" if sim else "direct", simulated=simulated)
+                         routed_to="metabolic_sim" if sim else "direct", simulated=simulated,
+                         open_source=open_source.use_open_source_only(),
+                         open_model_id=open_meta.get("open_model_id"),
+                         open_label=open_meta.get("open_label"))
     return {"model": model, "tier": w["tier"], "simulated": simulated, "metabolic": sim,
+            "open_source": open_source.use_open_source_only(),
+            "open_model": open_meta or None,
             "response": upstream, "guard": verdict, "audit_hash": entry["hash"]}
 
 
