@@ -25,7 +25,7 @@ flowchart LR
   S[CLI swarm / command-center] -.mock.-> C[Firecracker Kali microVM cage<br/>cage/*]
 ```
 
-## Inventory (126 tracked files at this release)
+## Inventory (125 tracked files at this release)
 | Area | Paths |
 |---|---|
 | Backend (FastAPI) | `backend/main.py` (`/health /login /challenge /authorize /keys/enroll /muse/query /audit`), `crypto.py`, `store.py`, `audit.py`, `guard/`, `metabolic_sim.py`, `open_source.py` |
