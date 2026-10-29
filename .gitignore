@@ -15,3 +15,11 @@ frontend/dashboard-shot.png
 *.egg-info/
 cli/musebreak_cli.egg-info/
 frontend/swarm-shot.png
+
+# Local verification environments and generated business evidence (never keys/customer data).
+.venv/
+verification-output/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
