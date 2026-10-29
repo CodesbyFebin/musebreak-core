@@ -180,3 +180,9 @@ See [`MASTER_PROMPT.md`](MASTER_PROMPT.md).
 See `loadtest/results/REPORT.md`. Run: `cd loadtest && ./run_local.sh`.
 
 MIT © MuseBreak contributors. "Meta", "Muse", "Metabolic" are referenced descriptively; this is an independent hackathon project.
+
+## Independently checkable invoice workflow (opt-in)
+
+`/business` now supports catalog → invoice draft → authenticated exact-payload approval → stock recheck → atomic issuance and Ed25519 receipt. A separate read-only verifier checks the signed decision and actual SQLite invoice, stock movements and evidence event. See [the workflow, trust assumptions and demo](docs/verification/INVOICE-WORKFLOW.md) and [the upstream implementation comparison](docs/verification/UPSTREAM-COMPARISON.md).
+
+This guarantee covers only the new local-invoice path. It does not harden the legacy `/os` browser-reported completion or `/orders` demo approval routes. It proves neither payment settlement nor ZK execution. Public demo MetaKey material is rejected for business operations unless the explicit synthetic-demo override is enabled. No live Meta model call was added or executed by this slice.

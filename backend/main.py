@@ -297,3 +297,18 @@ except Exception as _zkvm_err:  # pragma: no cover — import surface for local 
     import logging
     logging.getLogger("musebreak").warning("zkvm routers not mounted: %s", _zkvm_err)
 
+
+# Authenticated invoice workflow: mounted independently of optional demo/zkVM routers.
+# Disabled until BUSINESS_DB_PATH and BUSINESS_SIGNING_KEY_PATH are configured.
+from business.api import create_router as create_business_router
+def _business_non_demo_key(key_id):
+    key = KEYS.get(key_id)
+    if not key:
+        return False
+    # Renaming the public demo key does not make it private key material.
+    demo_public = crypto.load_public_key(DEMO_PUB)
+    public_hmac = bytes.fromhex("6d757365627265616b2d64656d6f2d6465766963652d7365637265742d303031")
+    return (key["pub"].public_numbers() != demo_public.public_numbers()
+            and not secrets.compare_digest(key["hmac_secret"], public_hmac))
+
+app.include_router(create_business_router(wonder, _business_non_demo_key))
