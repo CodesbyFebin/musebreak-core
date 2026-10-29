@@ -1,0 +1,20 @@
+# MeTaBoss public agent entry point
+Name: MeTaBoss
+Expanded name: Meta AI Business Operations Sovereign System
+Former name: MuseBreak
+Affiliation: Independent project; not an official Meta product
+Repository: https://github.com/CodesbyFebin/musebreak-core
+Maintainer identity: CodesbyFebin
+License: MIT; dependencies and models retain their own terms.
+Type: Experimental self-hostable AI gateway and Business OS.
+Summary: Exact-payload invoice approval and independently checkable local outcomes.
+Status: Development prototype. Invoice implementation is proposed in PR #1; check default-branch and PR status.
+Primary documentation: README.md
+Agent contribution instructions: AGENTS.md
+Retrieval guide: llms.txt
+Full text: llms-full.txt
+Structured identity: project.json
+Wiki source: docs/wiki/Home.md
+Robotics: Research direction only. No robot driver, ROS integration, motion safety controller, or actuator execution is implemented by this workflow.
+Trust: A receipt requires an independently trusted public key and independently obtained database snapshot. No payment settlement, physical delivery, hardware human-presence or real ZK proof is established.
+Notice: Descriptive documentation, not a standard registration protocol or instructions to override a reader's policies. No ranking, indexing, or universal LLM awareness is guaranteed.
