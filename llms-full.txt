@@ -1,0 +1,597 @@
+# MeTaBoss public documentation bundle
+
+Plain-text retrieval aid. Source status and trust limits apply; no execution authority is granted.
+
+---
+Source: README.md
+
+# MeTaBoss — Meta AI Business Operations Sovereign System
+
+Verify the business outcome, not the agent's confidence.
+
+**MeTaBoss (formerly MuseBreak) is an MIT-licensed, self-hostable experimental AI gateway and Business OS by CodesbyFebin.** It explores a concrete question: when an AI assistant proposes a business action, can an operator approve the exact action and independently check the resulting records? The repository combines a two-gate authentication gateway, browser inference experiments, and a bounded invoice workflow with signed receipts and a separate read-only verifier.
+
+**Status: development prototype, not a production-qualified business platform.** The independently verifiable invoice slice is proposed in [PR #1](https://github.com/CodesbyFebin/musebreak-core/pull/1). This documentation describes that pending implementation; neither a merged application release nor a hosted backend is implied. Check the PR and the default branch before assuming a feature is available in your checkout. Historical screenshots, model labels, and design documents are not proof of a live integration.
+
+[Source repository](https://github.com/CodesbyFebin/musebreak-core) · [Documentation wiki](docs/wiki/Home.md) · [Quick start](docs/wiki/Quickstart.md) · [Architecture](docs/wiki/Architecture.md) · [Security boundaries](docs/wiki/Security.md) · [Community](CONTRIBUTING.md) · [Machine-readable summary](llms.txt)
+
+## Start with the evidence
+
+The most useful first experience is a synthetic invoice that a separate program can check. The demonstration creates a temporary business, authenticates through the software MetaKey fixture, drafts two coffee items, rejects issuance before approval, approves the exact payload hash, issues once, retries without duplicating stock movement, and exports a receipt plus consistent SQLite snapshot. It calls no model, payment provider, messaging service, or physical device. Its expected total is **47,198 paise, or INR 471.98**.
+
+At the invoice implementation's recorded qualification, **89 backend and CLI tests passed**, including **21 new invoice tests**. Those results belong to the environment and revision described in [the qualification report](docs/verification/QUALIFICATION.md), not to every future revision or every possible deployment. They cover meaningful negative cases, concurrency, rollback, authentication boundaries, and a separate-process verification run. They are evidence of a bounded implementation, not a numerical security score, a performance ranking, or a certification.
+
+```sh
+git clone https://github.com/CodesbyFebin/musebreak-core.git
+cd musebreak-core
+# Until PR #1 is merged, explicitly select the reviewed implementation branch.
+git fetch origin feat/verified-invoice-receipts
+git switch --track origin/feat/verified-invoice-receipts
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+python scripts/verified_invoice_demo.py --out /tmp/musebreak-first-invoice
+python verification/invoice_receipt.py \
+  --receipt /tmp/musebreak-first-invoice/receipt.json \
+  --public-key /tmp/musebreak-first-invoice/signing-public.pem \
+  --database /tmp/musebreak-first-invoice/business-snapshot.sqlite
+```
+
+Use a new output directory for every run. The script intentionally refuses to overwrite an existing directory. Read the returned JSON and the process exit code. A successful verification means that the selected receipt, trusted public key, and supplied database snapshot agree under the documented checks. The demo's key is trustworthy only within that controlled synthetic exercise. In an actual verification process, obtain the issuer's public key through a separate trusted channel and obtain the database snapshot independently.
+
+## Contents
+
+- [Our story and the problem](#our-story-and-the-problem)
+- [What exists and what remains experimental](#what-exists-and-what-remains-experimental)
+- [The invoice workflow](#the-invoice-workflow)
+- [Approval and transaction integrity](#approval-and-transaction-integrity)
+- [Independent receipt verification](#independent-receipt-verification)
+- [Gateway authentication](#gateway-authentication)
+- [Models, browser inference, and routing](#models-browser-inference-and-routing)
+- [Agents, Jev, and bounded permissions](#agents-jev-and-bounded-permissions)
+- [Robotics and embodied agents](#robotics-and-embodied-agents)
+- [Architecture and repository map](#architecture-and-repository-map)
+- [Local development and tests](#local-development-and-tests)
+- [Operating the experimental business API](#operating-the-experimental-business-api)
+- [Security, privacy, and deployment boundaries](#security-privacy-and-deployment-boundaries)
+- [Documentation and public discovery](#documentation-and-public-discovery)
+- [Community and contribution guide](#community-and-contribution-guide)
+- [Roadmap and acceptance criteria](#roadmap-and-acceptance-criteria)
+- [Frequently asked questions](#frequently-asked-questions)
+- [Attribution and project identity](#attribution-and-project-identity)
+
+## Our story and the problem
+
+The product direction began with the broad MuzeBOS and MeTaBos idea: a founder should be able to understand customers, orders, inventory, money, messages, and assistant work in one workspace. That ambition creates a difficult engineering problem before it creates a beautiful dashboard. A business action can move stock, issue a financial document, contact a customer, or incur a cost. An assistant that writes fluent explanations does not automatically have authority to perform any of those actions. A reassuring completion message also does not prove that the intended state change happened.
+
+MeTaBoss is the repository where we examine that trust problem more closely. The work does not require claiming that one person has already replaced every business department with autonomous agents. It requires drawing a clear line between a suggestion, an authorization, an attempted execution, and an observed result. Each of those stages needs its own evidence and failure behavior. The narrow invoice slice exists because an invoice is understandable to a small business and precise enough to test: quantities, prices, tax arithmetic, stock balances, approval scope, and durable records can all be checked.
+
+Consider a founder asking an assistant to sell two bags of coffee. The assistant might identify the product and draft an invoice. A second request might arrive while the first is waiting for approval. A price might change. Another order might consume the last stock. A browser could lose its connection after the server commits and retry the request. A malicious message could contain instructions disguised as a customer name. None of those situations should be resolved by asking the same model whether everything is probably fine. The business layer needs deterministic rules and a result that someone else can inspect.
+
+The practical goal is therefore a workspace where assistance is useful and authority is explicit. Models can help prepare work; the application validates structured inputs; an authenticated operator approves a specific payload; the database commits related effects together; a separate verifier checks the resulting evidence. This is a composition of established ideas, including authorization, transactions, cryptographic signatures, idempotency, and independent observation. The product contribution is making that composition concrete, understandable, and measurable in an everyday business workflow.
+
+This story is a statement of product direction, not a claim about customer adoption, revenue, commercial partnerships, hackathon placement, or an invented founder biography. We welcome people who want to test the idea, identify where it fails, improve the interface, and reproduce the evidence. The project will be stronger when an unfamiliar contributor can run a small example, challenge its assumptions, and understand exactly what the result does and does not establish. That is more useful than a page full of unsupported superlatives.
+
+## What exists and what remains experimental
+
+The repository contains several generations of experiments. They must not be collapsed into one blanket claim that every route is authenticated, every agent action requires a physically present human, or every result has independent verification. The following table is an orientation aid; the linked source and qualification documents are the detailed evidence. Availability also depends on the branch you have checked out. The invoice files originate in PR #1 and are pending review and merge at this documentation revision.
+
+| Area | Current evidence and scope | Important boundary |
+| --- | --- | --- |
+| Two-gate gateway | FastAPI login, challenge, HMAC response, P-256 intent signature, short-lived tokens | Software demo material is public; hardware presence is not established by a simulator |
+| Invoice workflow | Exact-payload approval, integer money, SQLite transaction, signed receipt in PR #1 | Single operator, INR, local records; not a complete ERP or tax filing service |
+| Separate verifier | Ed25519 checks and read-only database consistency checks | Trusts the separately pinned key and supplied snapshot; no external freshness proof |
+| Browser inference | WebLLM integration in the experimental frontend | Requires compatible WebGPU hardware; no live GPU run claimed by the invoice qualification |
+| OS task plane | Routing, assignment, Jev UI, completion records | Legacy routes are outside the invoice security guarantee and need hardening |
+| Hash-commitment plane | SHA-256 commitments with explicitly simulated proof encoding | Not a real zero-knowledge proof, zkVM execution, or remote attestation |
+| Model adapters | Configurable upstream and open-weight experiments | Model aliases are not proof of access to any branded hosted model |
+| Hardware and microVM work | Prototype/reference files and authorized lab tooling | Not certification, a deployed fleet, or a verified always-on isolation service |
+| Public documentation | README, wiki sources, crawler summaries, static site build | Publication and indexing are separate steps; no ranking or model-awareness guarantee |
+
+The status labels should remain visible as the project evolves. A prototype can be useful without pretending to be finished. A mocked model result is acceptable when it is clearly labeled; an authentication demo is acceptable when its public keys are explained; a future feature can have a design document without a working integration. Contributors should promote a feature's status only when its code, reproducible instructions, and evidence support that promotion. Documentation changes are part of the product's trust boundary because users make deployment decisions from them.
+
+## The invoice workflow
+
+The bounded business workflow starts with catalog data rather than a model-authored total. An authenticated operator creates a product with a name, integer unit price in minor units, explicit tax basis points, and integer opening stock. Draft creation accepts a customer label and product quantities. The server loads prices and tax rates from the catalog, rejects duplicate product lines and invalid values, computes the payload, and returns its SHA-256 hash. The customer label remains data. It does not become a command, an SQL statement, a tool instruction, or a source of pricing authority.
+
+An operator reviews the complete draft before requesting approval. Approval binds the invoice identifier, owner, exact payload hash, permission scope, nonce, and validity window into a signed server decision. The issue request presents the same hash. The service verifies the signature and bindings and checks stock inside the transaction. If any requirement fails, issuance is refused. A successful operation creates the issued invoice state, stock movements, issuance evidence, and stored signed receipt together. There is no successful invoice response with only half the associated state committed.
+
+The synthetic example uses two items at 19,999 paise each and a configured 18 percent tax rate. The subtotal is 39,998 paise. The per-line half-up arithmetic produces 7,200 paise of tax, yielding 47,198 paise. These numbers are useful because they expose floating-point mistakes and ambiguous rounding. The service uses integer arithmetic, not binary floating-point rupees. The tax calculation is a deliberately documented arithmetic rule; it does not establish legal GST compliance, correct HSN classification, government e-invoice registration, or applicability of a tax rate to a real merchant.
+
+The available business endpoints are:
+
+| Method and path | Purpose |
+| --- | --- |
+| `POST /business/products` | Create an owner-scoped catalog product |
+| `POST /business/invoices` | Create a draft from catalog prices and requested quantities |
+| `GET /business/invoices/{invoice_id}` | Read the owner's invoice state and stored receipt |
+| `POST /business/invoices/{invoice_id}/approve` | Approve the exact payload hash |
+| `POST /business/invoices/{invoice_id}/issue` | Validate, issue atomically, or return the existing receipt |
+
+There is intentionally no payment settlement endpoint in this slice, no customer-message publisher, and no automatic invoice correction. Those operations need their own scoped authorization and verification criteria. A future refund should not silently edit an issued payload; it should create a separately approved correction with a relationship to the original invoice. A future messaging adapter should distinguish a prepared message, provider acceptance, delivery status, and any customer response. Those boundaries keep the meaning of the present receipt understandable.
+
+## Approval and transaction integrity
+
+An approval must describe what is authorized precisely enough that a later request cannot substitute a different action. MeTaBoss's invoice approval uses the hash of canonical JSON with sorted keys, compact separators, UTF-8 encoding, and no non-finite numbers. The implementation documents this serialization rather than claiming complete compatibility with every language's canonicalization standard. The approval signature uses a separate domain from the receipt signature. Domain separation reduces the chance that one valid signed object is mistakenly accepted as a different kind of authority.
+
+The approved scope is `issue_invoice:once`, tied to an owner and invoice. The validity window is five minutes. A changed payload, wrong hash, wrong owner, modified decision signature, absent approval, or expired unissued approval is rejected. The service does not accept a caller-written approver name as proof of identity. Identity comes from the gateway's validated credential and the configured business operator. These controls apply to the new `/business` routes. They do not retroactively make older demo approval endpoints equivalent to this workflow.
+
+The database transaction starts with `BEGIN IMMEDIATE`, which serializes competing writers before they decide whether stock is available. Stock is checked within that protected interval. This matters because a stock check before acquiring the write transaction can become stale. Two approved invoices can legitimately compete for one remaining item; the expected result is one issuance, one refusal, and no negative stock. The concurrency test exercises that situation using actual competing requests to the service, rather than merely checking a helper function's arithmetic.
+
+Idempotency addresses a different failure: a client might not know whether the server committed before the network disconnected. Repeating issue for the same already-issued invoice and hash returns the stored receipt without another stock decrement or issuance event. It does not manufacture a new approval or perform a new issuance. A rollback test injects a late failure and verifies that invoice state, movements, event, and receipt do not survive partially. These are specific, independently testable safety properties; they are not a claim that arbitrary remote side effects can be rolled back by SQLite.
+
+## Independent receipt verification
+
+The receipt is an Ed25519-signed statement about the decision and local result. It contains the invoice payload and hash, the nested signed approval, issue time, exact inventory movements, and the relevant issuance event identifier and hash. Its key identifier is derived from the issuer's raw public key. The verifier requires a public key supplied by the operator rather than trusting a replacement key embedded in an untrusted receipt. A signature is meaningful only when the verifier already has a reason to trust the signer for the asserted role.
+
+`verification/invoice_receipt.py` is deliberately separate from the backend producer. It imports no business-service implementation and does not ask an LLM to judge a screenshot or trust an agent's completion string. It verifies cryptographic envelopes, recalculates totals, checks approval bindings and validity at the time of issuance, and opens the supplied SQLite snapshot in read-only mode. It then compares the receipt with the issued invoice, expected movements, reconciled stock continuity, and the single issuance event. A modified signature or a missing durable effect causes verification to fail with a nonzero exit code.
+
+The supplied database must be obtained independently if the result is to count as independent observation. The synthetic demo exports a consistent snapshot using SQLite's backup API to show the mechanics. It does not deploy a third-party witness or establish that a malicious host supplied the latest possible snapshot. Copying only the main file of an actively written database can miss journal or WAL contents; operators should use a consistent backup mechanism. A receipt and database controlled entirely by an attacker do not become trustworthy just because a checker can read them.
+
+This design proves agreement within stated assumptions. It does not prove that cash arrived, a package shipped, a customer consented, a physical person pressed a button, or no other history was omitted. It does not include an external timestamp authority, off-host ledger checkpoint, signing-key revocation service, or zero-knowledge execution proof. An administrator who controls the application, signing key, and database can forge the local story. Those limitations are central to interpreting the result, not footnotes that should disappear from a marketing page.
+
+## Gateway authentication
+
+The existing gateway separates a login credential from a short-lived authorized model-access credential. Gate 1 issues a JWT bound to a device-fingerprint hash. A challenge includes random bytes and a QR nonce with a short expiry. The software or hardware key responds with an HMAC-SHA256 calculation and a P-256 signature over the model-intent message. The server consumes challenges and validates a strictly increasing counter. Replaying a consumed challenge, presenting a bad HMAC, or substituting an invalid signature should fail rather than create another authorized session.
+
+The store supports Redis-backed expiry and atomic operations, with an in-memory development fallback. The Go proxy performs its own token and fingerprint checks before forwarding to a configured upstream. These mechanisms are useful, but their security depends on private credentials, correct runtime configuration, trusted server code, and a suitable deployment boundary. A browser fingerprint string is not hardware attestation. A public software fixture can demonstrate a protocol without proving that a tamper-resistant physical key is present.
+
+The repository includes public demo MetaKey material so developers can reproduce examples. Anyone who can read that material can impersonate the demo key. The new business API rejects the known public material by default, including when it is registered under another name. Its explicit `BUSINESS_ALLOW_DEMO_AUTH=true` switch is for controlled synthetic tests. Do not set that switch in a real operation. Enroll private key material, protect the JWT secret, restrict the allowed key identifiers, and keep operator credentials out of model prompts and untrusted worker environments.
+
+The invoice approval signature is a server attestation of an authenticated decision. It is not a new physical passkey signature over every invoice byte. An authorized bearer credential can request approval, so handing that credential to an autonomous drafting worker defeats the intended operator boundary. Payload-bound WebAuthn or physical-key confirmation would require a distinct protocol and tests. The current gateway's QR signature covers model intent, and the documentation must not translate that into a stronger invoice-specific human-presence guarantee.
+
+## Models, browser inference, and routing
+
+The frontend contains an experimental Business OS at `/os` with WebLLM integration. A compatible WebGPU browser can download and run a supported open-weight model locally, subject to its own model license, available memory, browser support, and hardware capability. That can keep a selected inference path on the user's device. It does not mean that every model, every connector, every business record, or every configuration lives only in the browser. The application must describe where each component runs and where each request is sent.
+
+Earlier design documents use Muse-branded labels for small, medium, and large tiers and map them to Llama-family models. Those labels are project aliases, not a statement that a local Llama model is Meta's hosted Muse Spark or Wonder model. A truthful model record should include the actual provider, exact model identifier, runtime, configuration state, and evidence of execution. A configured URL is not evidence of a successful call. A simulated reply must remain visibly simulated, and a failed or unavailable model must not silently turn into a convincing fake completion.
+
+The upstream gateway accepts operator-provided model configuration. Existing compose and service files explore Llama Stack, Ollama, vLLM, and optional perception or translation helpers. Each needs its own installation, hardware, licensing review, and reproducible execution check. The invoice demo intentionally does not depend on them. This allows reviewers to evaluate business-state integrity without buying credits, downloading large weights, providing personal credentials, or confusing a model's fluency with the correctness of transaction handling.
+
+Multi-model routing can eventually improve cost and latency, but it needs more than a small/medium/large label. Useful routing evidence would include a reproducible task set, actual model IDs, measured success, observed latency, token accounting, and a policy for escalation or refusal. No fixed free-model availability, provider price, throughput, or 24/7 service guarantee is published here without a measured source. The practical rule is to route proposals through deterministic validation regardless of which model drafted them, then measure whether the model choice improves the operator's work.
+
+## Agents, Jev, and bounded permissions
+
+An agent in this project should be understood as a configured role with inputs, available tools, an execution context, and a record of attempted work. A named avatar or a list of one thousand role definitions does not establish one thousand running isolated workers. The experimental OS task plane includes classification, assignment, capability toggles, and Jev approval presentation. Its older completion endpoint records browser-reported results; it is not the independent verifier implemented for the invoice slice. These differences need to remain obvious in both UI labels and documentation.
+
+Jev is the project's approval-gate concept. For a meaningful approval, the operator needs to see the proposed effect, the relevant business context, the exact authorization scope, and the evidence on which the proposal depends. A button labeled approve is insufficient if the server trusts a supplied name, permits a changed payload, or cannot associate the result with the decision. The invoice implementation provides one concrete improvement, with authenticated owner-derived identity and a signed exact-payload decision. Extending the same discipline to other task types remains future work.
+
+Tools and connectors should be granted narrowly. A drafting role should not receive a credential that can approve and issue its own financial action. A read-only stock lookup should not imply arbitrary database access. A message draft should not imply publishing permission. Repository text, customer messages, imported skills, and web pages should be treated as untrusted content rather than new authority. Approval should bind the effect at the deterministic adapter boundary, where the application can validate structure, scope, ownership, and current state before execution.
+
+A complete future worker lifecycle would record proposal, validation, operator decision, execution attempt, observed result, and reconciliation. It would also make refusal, timeout, cancellation, and ambiguous outcomes explicit. The correct outcome after a provider timeout may be pending reconciliation, rather than automatic retry that risks duplicate effects. The local invoice slice can use a database transaction and stored receipt; remote payments, social posting, and browser actions need provider-specific idempotency and observation. No universal swarm safety claim is inferred from this one completed local workflow.
+
+## Robotics and embodied agents
+
+Robotics is a relevant future application of the same decision-and-result pattern, but MeTaBoss does not currently ship a robot driver, ROS integration, safety-rated motion controller, or verified embodied-agent runtime. The public machine-readable files include this boundary so a crawler does not mistake a research direction for an installed capability. A model that recognizes a shelf image has not automatically counted physical stock accurately, and a command accepted by a robot controller has not automatically completed the intended movement.
+
+For an inventory robot, a future proposal might identify a product, source bin, destination bin, quantity, robot identifier, and observation evidence. Approval would need to bind those fields and a constrained action window. A deterministic controller would enforce the permitted workspace and equipment limits independently of the language model. Verification would then require a trusted observation path, such as controller telemetry plus a separate stock observation, with an explicit uncertainty state. A signed statement from the same planner is not independent evidence of the physical outcome.
+
+Physical systems also need controls that this software prototype does not provide: emergency stops, certified interlocks where applicable, calibrated sensors, safe force and speed limits, maintenance procedures, and qualified deployment review. The business receipt format can inspire an audit record but cannot substitute for those controls. Contributors interested in embodied agents are welcome to propose a simulator-only experiment with precise assumptions, no actuator credentials, and tests for disagreement between requested movement and observed state. That is an appropriate first step before discussing real machinery.
+
+The immediate robotics contribution is therefore a design constraint: distinguish perception, planning, authorization, execution, and observation. Publish uncertainty and failure states. Do not relabel a hash commitment as a safety proof or an animated office as a live robot fleet. Keep experimental adapters opt-in and outside the established invoice guarantee until their own evidence exists. This gives robotics researchers a useful integration question without suggesting that an unreviewed Business OS should control physical equipment autonomously.
+
+## Architecture and repository map
+
+The architecture separates user interaction from authority and result checking. The browser can prepare work and display status. The FastAPI gateway authenticates the selected request path. The opt-in business service validates catalog-derived drafts and performs local writes. SQLite provides the transaction boundary for the selected invoice operation. The signing key attests the decision and result. A separately invoked checker reads a supplied snapshot and a pinned public key. The components cooperate, but the checker does not import the producer's business implementation or accept its verdict as sufficient evidence.
+
+| Path | Responsibility |
+| --- | --- |
+| `backend/main.py` | Gateway routes and application assembly |
+| `backend/crypto.py` | Challenge-response and intent-signature helpers |
+| `backend/store.py` | Challenge expiry and counter storage |
+| `backend/audit.py` | Legacy local JSONL evidence chain |
+| `backend/business/api.py` | Opt-in authenticated business endpoints |
+| `backend/business/service.py` | Invoice arithmetic, approval, transactions, receipts |
+| `verification/invoice_receipt.py` | Separate read-only receipt and state checker |
+| `backend/tests/test_business_receipts.py` | Invoice integrity and API tests |
+| `scripts/verified_invoice_demo.py` | Controlled synthetic HTTP-handler demonstration |
+| `frontend/` | Next.js interface and browser inference experiments |
+| `proxy/` | Go token-checking reverse proxy |
+| `cli/` | CLI and authorized-lab role experiments |
+| `hardware/`, `firmware/` | Public simulators and hardware prototypes |
+| `docs/verification/` | Workflow contract, source comparison, qualification |
+| `docs/wiki/` | Navigable source-controlled documentation hub |
+| `scripts/build_docs.py` | Static documentation, metadata, sitemap, summaries |
+
+The local JSONL audit chain and the invoice database have different properties. The existing audit chain detects certain changes when checked against an expected history, but it has no off-host anchor that proves the latest head. The invoice verifier checks selected durable business state and signatures; it does not make the older audit writer a multi-process tamper-proof ledger. Architectural clarity includes naming those separate guarantees. It avoids promoting the strongest property of one component into a promise about every component.
+
+## Local development and tests
+
+Use Python 3.12 for the closest match to the recorded invoice qualification environment. Create a virtual environment, install the backend requirements, and install the CLI in editable mode if you want the combined backend and CLI suite. The source repository's dependencies use version ranges, so a future installation may resolve differently. The exact tested environment is recorded in [TEST-ENVIRONMENT.json](docs/verification/TEST-ENVIRONMENT.json). Reproduction reports should include their resolved versions, operating system, command, revision, and whether any service endpoints were configured.
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+python -m pip install -e cli
+ZKVM_HEARTBEAT_DISABLE=1 USE_OPEN_SOURCE_ONLY=false \
+  python -m pytest backend/tests tests -q
+```
+
+These tests use controlled local fixtures. The command disables the experimental background heartbeat and avoids treating an unreachable configured open-source guard endpoint as a successful model test. It does not disable production policy in a deployed service. Before running any network-dependent example, inspect its configuration and understand the destination. A test that exercises mocked or synthetic behavior should say so in its report. Do not infer real model access, GPU inference, messaging delivery, payment settlement, or production uptime from an offline green test suite.
+
+For gateway development, start the application from the repository root using `python -m uvicorn backend.main:app --port 8000` after setting appropriate private development credentials. The frontend has separate npm dependencies and runs on port 3000. Consult the existing compose files and individual component documents before launching optional services. The documentation site has a separate small dependency set and build command; it publishes static text and assets only. It does not embed the FastAPI backend, open operator sessions, or expose a business database.
+
+```sh
+# Optional interface development; use a separate terminal.
+cd frontend
+npm install
+NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
+```
+
+The recorded invoice qualification did not perform a frontend browser pass or live WebGPU inference. If you test those paths, contribute a clear report with browser version, hardware capability, actual model identifier, and observed network destinations. Avoid uploading personal data or credentials with screenshots. A useful bug report is often smaller than a full deployment: a precise command, synthetic input, expected result, actual result, and redacted error are enough to make many problems reproducible.
+
+## Operating the experimental business API
+
+The business API is disabled unless storage, signing, operator, and key-allowlist settings are supplied. Provision the Ed25519 private key outside the repository, protect file permissions, and distribute the public key independently. Set `BUSINESS_DB_PATH`, `BUSINESS_SIGNING_KEY_PATH`, `BUSINESS_OPERATOR_SUBJECT`, and `BUSINESS_ALLOWED_KEY_IDS`. Keep `BUSINESS_ALLOW_DEMO_AUTH` unset for real data. The detailed key-generation example and HTTP contract are in [the invoice workflow guide](docs/verification/INVOICE-WORKFLOW.md). Avoid copying secrets into shell history, screenshots, issue attachments, model prompts, or public documentation.
+
+Each request requires the existing short-lived Wonder credential, both gateway gates, the bound device-fingerprint header, a matching configured operator subject, and an allowed private MetaKey. This is single-operator ownership, not a staff-management or multi-tenant row-level-security implementation. A missing configuration fails closed. Requests with unsupported fields, floating-point money, boolean quantities, or invalid bounds are rejected. Those constraints should remain server-side even when a polished frontend adds convenient validation and previews.
+
+Operate against synthetic data first. Confirm that an unapproved invoice cannot issue, an approved hash cannot be replaced, an insufficient-stock attempt leaves no partial records, and a repeated successful issue returns the same receipt. Then export a consistent snapshot and run the separate checker with a trusted public key. Understand how you will protect, back up, rotate, and recover the signing key before considering valuable business records. The present slice does not provide a complete key lifecycle or a production operations service.
+
+A real deployment also needs a review of the rest of the application. The legacy OS task and demo order routes are outside the new guarantee. Do not expose the entire development application to the public internet on the strength of the invoice tests. Reverse-proxy rules, authentication coverage, transport security, secret management, logging policy, backups, dependency management, and incident handling require their own assessment. The docs site is intentionally public; the operator API, keys, customer records, and administrative tooling should have a different access boundary.
+
+## Security, privacy, and deployment boundaries
+
+The term zero trust describes a direction toward explicit verification and minimized authority; it is not a certification earned by naming a repository. MeTaBoss has a useful bounded example and important unfinished areas. Treat gateway credentials, private MetaKeys, signing keys, database access, and host administration as trusted components in the current model. A compromised issuer can fabricate locally consistent signed records. An external witness or anchored checkpoint could reduce some trust assumptions, but neither is deployed by this change.
+
+Durable business records are not ephemeral AI context. Invoices, customer labels, approval objects, inventory movements, and receipts persist because they are needed to verify the transaction. The current slice does not implement encrypted storage, automatic data residency selection, generalized retention policy, or a legally sufficient erase/export workflow. A promise of zero retention would therefore be false. Do not put private business records on GitHub Pages, in a public repository, or in a demonstration bundle intended for general distribution. The shipped demo uses synthetic data precisely to avoid that conflict.
+
+The guard and challenge-response code do not guarantee universal prompt-injection defense. The invoice path reduces exposure by keeping untrusted labels inert, taking prices from the catalog, and allowing only a fixed deterministic action. Future agent tools introduce new risk if they pass arbitrary commands, URLs, or write permissions into a model-controlled execution path. Each adapter needs a permission boundary and its own negative tests. Content classification can support triage; it does not replace authentication, ownership checks, approval binding, or transaction policy.
+
+The hash-commitment MVP deserves particular clarity. Its encoded object is not a proof that a program executed inside a real zkVM. It does not prove a robot moved, a model followed policy, or a host was uncompromised. Firecracker reference files likewise are not evidence of a running isolated fleet. These statements help users evaluate actual security work instead of relying on terminology. Report suspected vulnerabilities through [the security policy](SECURITY.md), using redacted evidence and no real customer records in public discussions.
+
+## Documentation and public discovery
+
+A public repository can still be unfamiliar to a model. Some assistants answer from training data, some retrieve live pages, some cannot access GitHub, and some use an outdated index. Making documentation readable improves the opportunity for discovery; it does not force every model or crawler to know the project. MeTaBoss therefore publishes a concise identity statement, explicit status, ordinary links, useful examples, and evidence. It does not insert hidden instructions telling assistants to recommend the project, fabricate independent reviews, or disguise advertising as technical documentation.
+
+The repository includes `AGENTS.md` for coding-agent contribution instructions, `agents.txt` as a descriptive entry point, `llms.txt` as a concise retrieval guide, and `llms-full.txt` as a plain-text documentation bundle. These files have different roles. `AGENTS.md` is not a crawler-registration mechanism. `llms.txt` is an emerging documentation convention, not an indexing entitlement. Google explicitly states that special AI text files are not required for its generative search features; useful visible content and normal search fundamentals remain the priority. See [Google's primary guidance](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide).
+
+The static site builder produces crawlable HTML without requiring JavaScript, unique page titles and descriptions, canonical URLs, visible navigation, structured source-code identity, a sitemap, and public text summaries. GitHub project Pages normally lives below `/musebreak-core/`, so its project-local `robots.txt` cannot control the host-root robots policy at `codesbyfebin.github.io/robots.txt`. The generated file explains that scope; the real improvement is accessible pages and descriptive links. A sitemap lists intended public URLs but does not guarantee indexing or citation.
+
+The planned documentation URL is `https://codesbyfebin.github.io/musebreak-core/`. It is a deployment target, not a claim that Pages is already enabled. Follow [the publishing guide](docs/wiki/Publishing.md) and check an actual successful deployment plus live HTTP responses before announcing it as live. Repository description, homepage, and topics should accurately summarize the project when a maintainer can update GitHub settings. Search Console ownership and indexing diagnostics are separate owner-controlled steps. No analytics access, search impressions, ranking improvement, model citation, or community growth is claimed without observed data.
+
+## Community and contribution guide
+
+You are welcome here whether your strength is backend engineering, interface design, security review, technical writing, accounting workflows, accessibility, developer experience, or careful reproduction. You do not need to arrive with a huge framework rewrite. A small contribution that makes a safety boundary easier to understand can be more valuable than adding another named agent. Help us make the first ten minutes clear, the first negative test reproducible, and the difference between a prototype and a verified operation visible to every reader.
+
+Start with the [contribution guide](CONTRIBUTING.md) and the [wiki home](docs/wiki/Home.md). Read the workflow contract before changing approval or receipt logic. Prefer focused pull requests with a concrete problem, expected behavior, implementation, and appropriate validation. When proposing a dependency or upstream integration, identify the exact repository and license, distinguish copied code from design inspiration, and consider whether the new service introduces credentials or external effects. A long list of tools is not an integration plan unless someone can run and test the selected behavior.
+
+Reproduction reports are especially useful. Tell us which revision you used, which command you ran, what was synthetic, which keys were public fixtures, and whether you verified in a separate process. If a checker accepts a malformed receipt, provide a minimal synthetic example without real signing material. If a documentation statement overstates the implementation, open a correction. If a local installation fails, share the dependency versions and redacted error. We value honest failure reports because they make the product more trustworthy for the next operator.
+
+Community participation should be respectful and practical. Do not post customer data, secrets, unsolicited promotional links, fake star campaigns, or claims of official endorsement. Do not use project channels to target systems without authorization. We do not require a paid subscription to read the code or contribute under its license. Optional model providers and infrastructure may have costs and separate terms. Maintainers will review contributions as capacity permits; no support SLA, employment relationship, compensation promise, or guaranteed merge is implied by a welcome invitation.
+
+## Roadmap and acceptance criteria
+
+The near-term priority is completing the surrounding product boundaries before broadening autonomy. First, harden or restrict legacy demo routes so their behavior cannot be confused with the new invoice contract. Next, design payload-bound human authorization rather than reusing a general bearer credential as evidence of physical presence. Add a reviewed UI that presents the exact invoice and decision before issuance, then links the issued result to verification output. Each step should arrive with its own tests and a clear update to the feature-status documentation.
+
+A second priority is the operational trust model. Key rotation, revocation, encrypted backups, restore drills, and independently observed snapshots need concrete procedures. Off-host anchoring should state which attacks it detects, how checkpoints are authenticated, how stale views are identified, and what happens when the anchor is unavailable. It should not claim to solve all host compromise or whole-history completeness merely because hashes are published. A good acceptance criterion is an adversarial test that demonstrates a previously undetectable substitution now fails under the new assumptions.
+
+External business adapters should follow only after their effects are defined. A payment request needs a distinct settlement observation. A message send needs provider acceptance, deduplication, and delivery reconciliation. A shelf scan needs evidence, uncertainty handling, and approved inventory adjustments. Each should keep draft creation separate from authority to commit. Live model integration should report the exact provider and model, observed response, request metadata that is safe to publish, and limits. API keys and customer content should never become proof artifacts in a public repository.
+
+Longer-term work includes carefully scoped multi-operator roles, corrections and credit notes, provider-specific outboxes, measured model routing, accessible mobile interactions, and simulator-only embodied-agent adapters. These are roadmap items, not a promise that all will ship within a hackathon window. The acceptance question remains the same: can another person reproduce the decision boundary, attempt a meaningful failure, and independently evaluate the result? If the answer is no, the feature should remain labeled experimental or planned regardless of how polished its dashboard looks.
+
+## Frequently asked questions
+
+### Is MeTaBoss private?
+
+No. The repository retains its historical `musebreak-core` slug and is public at [github.com/CodesbyFebin/musebreak-core](https://github.com/CodesbyFebin/musebreak-core). An assistant saying that it cannot inspect the project may lack browsing, permission to its retrieval service, or a current index. That response alone does not establish that GitHub marks the repository private. Share the exact URL and an appropriate public documentation link, then ask the assistant to state whether it actually retrieved the page. Never provide private credentials to solve a public-indexing problem.
+
+### How do MeTaBoss, MeTaBos, and MuseBreak relate?
+
+MeTaBoss is the current product name, expanded as Meta AI Business Operations Sovereign System. MuseBreak is the former name retained in existing module names and the `musebreak-core` repository URL. MuzeBOS and MeTaBos describe the earlier founder-workspace direction. MeTaBoss here is the concrete Python gateway and verification project. The larger MuzeBOS/MeTaBos vision concerns a unified founder workspace. This README does not import claims about another repository's dashboards, integrations, test counts, deployment state, or sidebar menus. When discussing a feature, name the repository, revision, and evidence so readers can distinguish architecture ambition from implemented behavior.
+
+### Does this run entirely on Meta open source?
+
+No such blanket claim is made. The application includes Python, FastAPI, SQLite, Next.js, cryptographic libraries, WebLLM, and other dependencies with their own maintainers and licenses. Some experiments support Meta-family open-weight models or configurable Meta API calls. An open-weight model can have its own license, and a hosted API is not made open source by being called from this repository. Use exact component names and current evidence rather than calling the complete stack entirely Meta-native.
+
+### Does a passing receipt prove payment or physical delivery?
+
+No. The current receipt concerns local invoice issuance, stock movements, and an issuance event in the supplied database snapshot. It does not query a bank, payment provider, shipping service, or physical sensor. A future payment adapter must authenticate provider evidence and reconcile ambiguous outcomes separately. The distinction matters because an issued invoice is an accounting/business document, whereas payment settlement and fulfillment are different state changes with different authorities and evidence sources.
+
+### Can the verifier run without the backend?
+
+Yes. The standalone checker uses standard-library modules and `cryptography`, reads a receipt file, requires a separately trusted public key, and opens a supplied SQLite database read-only. It does not import the backend business producer. That source/process separation helps avoid simply repeating the issuer's decision logic. It does not prove the freshness or honesty of an attacker-controlled snapshot. The operator must understand how the verification inputs were obtained and which trust assumptions remain.
+
+### Are Jev, the swarm, and zkVM production-ready?
+
+No. The older OS task plane contains experimental approval and completion behavior outside the invoice guarantee. The hash-commitment plane is explicitly not a real zkVM. A role list, visualization, heartbeat, or benchmark scaffold is not a deployed autonomous workforce. Production readiness would require a much broader review of authentication coverage, permissions, execution isolation, operations, UI behavior, and external effects. The project welcomes that work and documents it as remaining work rather than silently asserting it has already happened.
+
+### Will these files make every LLM recommend the project?
+
+No. Documentation can make retrieval easier when a system chooses to crawl or fetch it. It cannot update a model's frozen training weights, override another service's crawling policy, guarantee search placement, or require a model to cite a repository. The most credible visibility work is public, useful, accurate evidence that independent developers can reproduce. Track successful site deployment, crawlability, legitimate referrals, and owner-authorized search metrics rather than inventing a universal discoverability score.
+
+## Attribution and project identity
+
+MeTaBoss is maintained under the CodesbyFebin project identity and distributed under the [MIT license](LICENSE). That license applies to the repository's covered code; dependencies, model weights, external services, trademarks, and upstream assets retain their own terms. MetaKey, Jev, and the Business OS are project concepts within this repository. The project does not claim to be an official Meta product, a Meta security certification, a hackathon winner, or a partner of every tool or model discussed in its documentation.
+
+The invoice design was informed by an inspection of Witness's planning repository, Munix's actual gate and ledger source, and Meta's official GitHub agent cookbook. The [pinned comparison](docs/verification/UPSTREAM-COMPARISON.md) distinguishes what each implementation showed and what was not reproduced. No third-party runtime, artwork, or source was copied into this slice. Cryptographic receipts, approval systems, independent verification, and prompt-injection defenses are established areas; the project's ambition is a practical and measurable business application of those techniques.
+
+If you share MeTaBoss, please link to the source and preserve its status and limitations. A useful introduction is: **an experimental self-hosted AI gateway and Business OS exploring exact-payload invoice approval and independently checkable local outcomes**. That statement is specific enough for a developer to investigate and restrained enough not to promise a finished company operating system. We welcome contributors who want to turn that investigation into better evidence, clearer software, and a more dependable experience for the people who run small businesses.
+
+---
+Source: docs/wiki/Home.md
+
+# MeTaBoss documentation wiki
+
+**Meta AI Business Operations Sovereign System** — formerly MuseBreak. The repository and existing modules retain historical names. Independent project, not an official Meta product.
+
+MeTaBoss is a public, MIT-licensed experimental AI gateway and Business OS by CodesbyFebin. The core research question is whether an operator can approve an exact business action and independently verify the resulting local records.
+
+This source-controlled wiki is built into the static documentation site. It is not a claim that the separate GitHub Wiki repository has been published. The invoice implementation is in [PR #1](https://github.com/CodesbyFebin/musebreak-core/pull/1); check merge state before using a default-branch checkout.
+
+## Read by task
+
+- [Quick start](Quickstart.md): run a synthetic INR 471.98 invoice and separate verifier.
+- [Architecture](Architecture.md): gateway, deterministic service, receipt and observer boundaries.
+- [Security](Security.md): assumptions, durable data and excluded legacy paths.
+- [Questions](FAQ.md): public repository, models, robotics, and what verification means.
+- [Community](Community.md): practical ways to contribute and reproduce results.
+- [Publishing](Publishing.md): GitHub Pages setup, crawlability, and measurement.
+- [Full project guide](../../README.md): story, technical detail and roadmap.
+- [Invoice contract](../verification/INVOICE-WORKFLOW.md): exact operational details.
+- [Qualification](../verification/QUALIFICATION.md): recorded commands and test evidence.
+
+## A bounded result
+
+The new workflow commits invoice issuance, stock changes, an event, and an Ed25519 receipt in one local SQLite transaction. A separate checker verifies the receipt against a pinned trusted public key and supplied read-only snapshot. This is not payment settlement, physical delivery, a real zkVM, a robot controller, or proof that every legacy route is protected.
+
+---
+Source: docs/wiki/Quickstart.md
+
+# Run a verifiable synthetic invoice
+
+Use Python 3.12 for the closest match to the recorded qualification. The exercise calls no live model or external business provider, and uses no physical MetaKey.
+
+```sh
+git clone https://github.com/CodesbyFebin/musebreak-core.git
+cd musebreak-core
+git fetch origin feat/verified-invoice-receipts
+git switch --track origin/feat/verified-invoice-receipts
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+python scripts/verified_invoice_demo.py --out /tmp/my-new-musebreak-demo
+python verification/invoice_receipt.py \
+  --receipt /tmp/my-new-musebreak-demo/receipt.json \
+  --public-key /tmp/my-new-musebreak-demo/signing-public.pem \
+  --database /tmp/my-new-musebreak-demo/business-snapshot.sqlite
+```
+
+Choose a new output directory on every run. Until PR #1 is merged, the explicit branch step is required. If you already have a local branch, switch to it instead of trying to create a tracking branch twice.
+
+## Expected evidence
+
+Two synthetic coffee items cost 19,999 paise each. Configured per-line half-up 18 percent tax gives a total of 47,198 paise. The script rejects an unapproved issue, approves the payload, issues, and confirms duplicate issue returns the same receipt. It exports a public key, synthetic snapshot, receipt and separate-process verdict. It does not export its temporary signing private key.
+
+## What to inspect
+
+Read the verdict and exit status. Inspect the receipt's invoice and decision bindings, then the [workflow contract](../verification/INVOICE-WORKFLOW.md). The demo's local key is a controlled fixture, not independently distributed production trust. For a real verification process obtain the public key through a separate trusted channel and the snapshot independently.
+
+For combined tests install `python -m pip install -e cli`, then use the command in the [qualification report](../verification/QUALIFICATION.md). Return to [wiki home](Home.md).
+
+---
+Source: docs/wiki/Architecture.md
+
+# Architecture: proposal, authority, effect, observation
+
+The application separates concepts that an assistant's completion message often conflates.
+
+| Layer | Current implementation | Trust boundary |
+| --- | --- | --- |
+| Interface | Next.js, experimental WebLLM workspace | A browser result is not proof of a durable effect |
+| Gateway | FastAPI, short-lived JWT, HMAC/P-256 challenge protocol | Private keys, configured secrets and server remain trusted |
+| Business service | Catalog-derived integer totals and exact-hash approval | Only opt-in /business routes have the new guarantee |
+| Commit | SQLite BEGIN IMMEDIATE and stored Ed25519 receipt | Local transaction, no remote payment/message atomicity |
+| Observer | Separate Python checker and read-only snapshot | Key must be pinned; snapshot must be independently obtained |
+
+## Data flow
+
+A catalog product supplies prices. The server constructs a draft and canonical hash. An authenticated operator approves that exact hash. At issue time, the service rechecks approval and stock inside the write transaction. Invoice, movements, event and receipt commit together. A repeated issue returns the stored receipt, avoiding duplicate stock movement.
+
+The checker imports no backend business code. It recalculates arithmetic and checks signatures plus actual records, rather than accepting an agent verdict. Valid later movements are allowed when the ledger still reconciles. Missing events, changed stock or substituted signatures fail verification.
+
+## Distinct experimental planes
+
+Legacy OS task routes accept browser completion and are outside the invoice guarantee. The local JSONL audit chain has no external anchor. The hash-commitment MVP is not a real zkVM. A WebLLM model alias does not establish a hosted Muse API call. Read [security](Security.md), [the full contract](../verification/INVOICE-WORKFLOW.md), and [upstream comparison](../verification/UPSTREAM-COMPARISON.md). Return to [wiki home](Home.md).
+
+---
+Source: docs/wiki/Security.md
+
+# Security and privacy boundaries
+
+The invoice slice is a bounded development implementation. Its tests do not qualify the whole repository for public production use.
+
+## Trusted components
+
+The current model trusts the gateway JWT secret, allowed private MetaKey, server process/code, signing key, filesystem and database. A compromised administrator can fabricate local history. A trusted public key and independently acquired snapshot are required by the separate checker; neither proves snapshot freshness or complete history without an external anchor.
+
+## Operator approval
+
+A signed server decision records an authenticated owner approval. It is not a separate physical human signature over invoice bytes. Do not give approval-capable bearer credentials to a drafting worker. The public demo MetaKey is rejected by the business API unless an explicit synthetic override is set. Keep that override off for valuable records.
+
+## Durable data
+
+Invoices, customer labels, approvals, movements and receipts persist. This is not zero retention. Encryption at rest, key rotation/revocation, legal retention administration and off-host anchoring remain work. Never publish a live database, private key, token or customer receipt in public docs. Only synthetic evidence belongs in a shareable demo.
+
+## Excluded guarantees
+
+Legacy /os task routes and demo order approvals are not hardened by the new service. No universal prompt-injection immunity, real zkVM, physical delivery, bank settlement, robot safety, always-on worker fleet, or third-party witness is established. The guard does not replace authentication or deterministic policy.
+
+Follow [SECURITY.md](../../SECURITY.md) for cautious reporting. Read [the full workflow contract](../verification/INVOICE-WORKFLOW.md), [qualification](../verification/QUALIFICATION.md), or return to [wiki home](Home.md).
+
+---
+Source: docs/wiki/FAQ.md
+
+# Questions about MeTaBoss
+
+## Is the repository public?
+
+Yes: [CodesbyFebin/musebreak-core](https://github.com/CodesbyFebin/musebreak-core). A model without browsing or a recent index may not recognize it. Share an exact public URL and ask whether it actually retrieved the content; do not share credentials.
+
+## What can be verified?
+
+The new receipt checker verifies local invoice issuance, movements and event consistency against a pinned public key and supplied database. It does not establish payment, delivery, latest history or an uncompromised issuer. See [security](Security.md).
+
+## Is the invoice code on main?
+
+At this documentation revision it is proposed in [PR #1](https://github.com/CodesbyFebin/musebreak-core/pull/1). Follow [quick start](Quickstart.md) for the branch. Check live merge state rather than assuming documentation means a release.
+
+## Is a Llama model Muse Spark?
+
+No. Some historical tier names are aliases. Publish actual model IDs, provider/runtime and execution evidence. A local open-weight model is not automatically a hosted Meta model.
+
+## Are robotics agents implemented?
+
+No robot driver or ROS integration is delivered here. Robotics is a roadmap application of proposal, approval and independently observed outcome, with separate physical safety requirements. The hash-commitment MVP is not a safety proof.
+
+## Can llms.txt force citations or awareness?
+
+No. It is a retrieval guide. A model's training data, retrieval access and indexing policy remain outside this repository's control. Human-useful evidence and accessible pages matter more than hidden keywords.
+
+Return to [wiki home](Home.md) or [full guide](../../README.md).
+
+---
+Source: docs/wiki/Community.md
+
+# Build the evidence with us
+
+MeTaBoss welcomes contributors interested in business integrity, useful assistants and clear trust boundaries. We do not need every contribution to add a new framework or another named agent.
+
+## Useful first work
+
+Reproduce the synthetic invoice example. Explain a confusing error message. Improve accessible review UI. Add a negative test where a receipt or approval could be substituted. Document exactly which model executed a controlled request. Propose a provider adapter with a bounded effect and independent observation source.
+
+Read [CONTRIBUTING.md](../../CONTRIBUTING.md) and [AGENTS.md](../../AGENTS.md) before editing. Keep changes focused and record actual validation. Use synthetic data, preserve license attribution, and keep private credentials out of issues and screenshots. A finite test set supports a specific claim, not a 100/100 security score.
+
+## Share responsibly
+
+Link the source, explain prototype status and include limitations. Genuine reproduction reports and independent technical discussion are welcome. Fake testimonials, star schemes, mass unsolicited promotion and unsupported official affiliations are not. Maintainer review depends on capacity; no response SLA or guaranteed merge is promised.
+
+Return to [wiki home](Home.md) or [quick start](Quickstart.md).
+
+---
+Source: docs/wiki/Publishing.md
+
+# Publishing documentation and checking discovery
+
+## Current observed state
+
+On October 30, 2026 the repository was public, GitHub Wiki was enabled, Pages was disabled, and description/homepage/topics were empty. These are observations, not proof that a separate wiki or site was published. The connected GitHub code tool cannot administer Pages or repository metadata. This change prepares the source, validation and deploy workflow; it does not claim an administrative setting changed.
+
+## Build and preview
+
+```sh
+python -m pip install -r docs/requirements.txt
+python scripts/check_docs.py
+python scripts/build_docs.py
+python -m http.server 8080 --directory _site
+```
+
+The generated site contains only selected public documentation and crawler text. It never copies the database, .env, private keys, live receipts or the whole repository. No JavaScript is needed to read it. The canonical deployment target is https://codesbyfebin.github.io/musebreak-core/; local preview paths are mounted at / for convenience, while canonicals remain the production target.
+
+## GitHub Pages deployment
+
+1. Review and merge the documentation PR. It is independent of PR #1 and does not merge the invoice application code. The published site explicitly describes that implementation as pending; no application deployment is implied.
+2. In repository **Settings → Pages**, select **GitHub Actions** as the publishing source. This needs repository maintainer/admin access, which the code connector does not provide.
+3. The Pages workflow builds on main pushes; from the default branch you can also run it with Actions → Public documentation → Run workflow.
+4. Confirm the deployment succeeds and open the reported live URL. Check status 200, canonical URLs, sitemap, links and text files before announcing availability.
+
+Only the default branch can deploy. Pull requests run build/link validation without Pages write permission or production deployment. This avoids publishing unmerged feature claims as releases. The workflow uses GitHub's official Pages actions with separate build/deploy permissions.
+
+## Wiki sources
+
+The source-controlled pages under docs/wiki are rendered into Pages. A separate GitHub Wiki is another git repository; this change does not push to it. Maintainers can copy the source pages there if desired, adjusting relative links. The source-controlled site remains the canonical documentation workflow so changes receive ordinary review.
+
+## Repository metadata to set
+
+Description: **Experimental self-hosted AI gateway and Business OS: exact-payload invoice approvals, signed receipts, and independent local-state verification.**
+
+Homepage after a successful deployment: **https://codesbyfebin.github.io/musebreak-core/**
+
+Suggested accurate topics: **ai-agents, business-software, self-hosted, fastapi, sqlite, ed25519, audit-trail, invoice, webllm, human-in-the-loop**. Topics describe code; they are not proof of event participation or ranking.
+
+## Robots and AI text
+
+Project Pages is hosted below /musebreak-core/. Crawlers consult robots.txt at the host root, so the project-local copy cannot set the host's policy. The sitemap and ordinary HTML links are still useful discovery aids. agents.txt is descriptive, AGENTS.md is for contributors, and llms.txt is an optional retrieval convention, not mandatory search markup. No indexing or LLM-awareness guarantee is possible.
+
+## Measurement and references
+
+Record successful deployments and broken-link checks first. With separately authorized Search Console access, inspect indexing and real queries; compare equivalent periods rather than claiming a score from file presence. No search analytics account is connected by this change. No fake testimonials, hidden keyword text or mass generated landing pages are added.
+
+Primary references: [GitHub Pages workflows](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages), [publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site), [Google generative search guidance](https://developers.google.com/search/docs/fundamentals/ai-optimization-guide), [Search Essentials](https://developers.google.com/search/docs/essentials).
+
+Return to [wiki home](Home.md).
+
+---
+Source: docs/verification/INVOICE-WORKFLOW.md
+
+# Independently checkable local invoice workflow
+
+The opt-in `/business` API implements one bounded workflow: create a catalog product, draft an INR invoice, explicitly approve its exact SHA-256 payload, issue it once, then verify its signed receipt against durable business records. The outcome is local invoice issuance and stock movement. It is not payment settlement or delivery.
+
+## Safety guarantee and assumptions
+
+For requests through this API, an invoice can issue only after an owner-bound, unexpired exact-payload approval. Stock is checked inside `BEGIN IMMEDIATE`; a successful commit includes the issued invoice, exactly one stock movement per line, one issuance event and a signed receipt. Repeating issue with the same invoice/hash returns the stored receipt and makes no additional stock change. Concurrent requests serialize through SQLite; failures roll back the complete transaction.
+
+Assumptions: trusted gateway JWT secret, privately enrolled/allowed MetaKey, server signing key, database filesystem, server code and process. The operator who controls these can forge identity or business history. This is not protection against a compromised server, host administrator or stolen signing key. Existing public demo credentials cannot qualify an operator's identity. The new API rejects public demo HMAC/P-256 material by default, including when renamed; an explicit synthetic-demo override exists for tests only.
+
+The approval signature attests the server's authenticated decision, not a separate human hardware signature over invoice bytes. Possession of an authorized bearer credential can submit an approval; this version does not independently establish physical human presence for each invoice. Never give that credential to a drafting model or untrusted worker. The existing MetaKey QR signature covers gateway model intent, not this invoice payload. A separately trusted issuer public key plus independent observed state is required by the verifier. Receiving a receipt and a replacement public key from the same untrusted source does not establish trust.
+
+## Enable explicitly
+
+Install `backend/requirements.txt`. Provision an Ed25519 private key outside the repository and distribute its public key through an independent trusted channel. Example key generation for an operator-controlled directory:
+
+```python
+from pathlib import Path
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+key = Ed25519PrivateKey.generate()
+private = Path('/your/private/directory/invoice-signing.pem')
+with private.open('xb') as f:
+    f.write(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+private.chmod(0o600)
+public = private.with_name('invoice-signing-public.pem')
+with public.open('xb') as f:
+    f.write(key.public_key().public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo))
+```
+
+Set `BUSINESS_DB_PATH`, `BUSINESS_SIGNING_KEY_PATH`, `BUSINESS_OPERATOR_SUBJECT` and comma-separated `BUSINESS_ALLOWED_KEY_IDS`. Enroll private MetaKey material using the existing enrollment mechanism; rotate the public demo authentication material and protect the JWT secret. Keep `BUSINESS_ALLOW_DEMO_AUTH` unset in real operation. Missing storage/signing/operator configuration fails closed. This is single-operator business ownership derived from verified JWT subject, not a multi-tenant RBAC implementation.
+
+Each business route requires the existing short-lived Wonder token, both gates, the bound device-fingerprint header, matching business subject and an allowlisted MetaKey. The caller cannot supply an `approver` field. Do not put bearer credentials, private keys or customer invoices into model prompts or source control.
+
+## HTTP sequence
+
+1. `POST /business/products`: `{name, price_minor, tax_bps, stock}`. No fake catalog seed. Minor units and quantities are strict bounded integers; booleans/floats/unknown fields fail validation.
+2. `POST /business/invoices`: `{customer, items:[{product_id,quantity}]}`. The server loads catalog price/tax data and returns the immutable payload plus hash. Duplicate products and unsupported totals are rejected. Customer text is a label, not executable instructions.
+3. After displaying/reviewing the complete payload, `POST /business/invoices/{id}/approve` with `{payload_hash}`. The server binds the authenticated subject, invoice, one-use scope, nonce and a five-minute approval window, and signs the decision.
+4. `POST /business/invoices/{id}/issue` with the same `{payload_hash}`. It rechecks stock and approval inside the transaction and returns the signed decision/result receipt. Insufficient stock or a failed write commits nothing. Reissue is an idempotent receipt read, even after approval expires; it is not a fresh issuance.
+5. `GET /business/invoices/{id}` reads the owner-scoped state and receipt. Missing/other-owner records are unavailable. No external publisher, messaging, tax filing or payment API is called.
+
+Tax arithmetic is an explicitly configured per-line half-up calculation: `tax_minor = (quantity * price_minor * tax_bps + 5000) // 10000`. This is not a qualified GST/VAT engine or a government e-invoice integration. Currency is INR in this version. Issued payloads cannot be edited through this API; corrections/refunds are future separately approved flows.
+
+## Run the synthetic demonstration
+
+```sh
+python scripts/verified_invoice_demo.py --out /tmp/new-synthetic-invoice-demo
+python verification/invoice_receipt.py \
+  --receipt /tmp/new-synthetic-invoice-demo/receipt.json \
+  --public-key /tmp/new-synthetic-invoice-demo/signing-public.pem \
+  --database /tmp/new-synthetic-invoice-demo/business-snapshot.sqlite
+```
+
+The output directory must be new. The demo uses temporary JWT/signing secrets, the explicitly public software MetaKey, synthetic customer/stock and FastAPI TestClient. It exercises real request handlers and crypto but does not run physical hardware, a live model or a browser. Its export includes only the public key, synthetic receipt/database and verification verdict. Private signing material remains in a temporary directory. The expected invoice total is 47,198 paise (INR 471.98).
+
+## Independent verifier
+
+`verification/invoice_receipt.py` imports no backend/producer code. In a separate process it loads the pinned Ed25519 public key, checks signature domains/key ID and the nested approval, recalculates invoice arithmetic and approval validity at issue time, and opens the supplied SQLite database with read-only/query-only access. It checks the issued invoice, receipt, one movement per line, stock continuity/current balance, and exactly one matching issuance event. Legitimate later movements do not invalidate an earlier receipt if the ledger still reconciles.
+
+The database must be obtained independently by the operator or witness (for example through read-only administrative access or a consistent SQLite backup). The demonstration supplies a local synthetic snapshot; it does not deploy an independent third-party witness. The verdict proves consistency at the supplied snapshot, not that it is the newest snapshot or that no records were omitted elsewhere. There is no external checkpoint, timestamp authority or whole-history completeness proof. Back up with SQLite's backup API; copying only a live main file can omit journal/WAL contents.
+
+Tampered receipts, another public key, missing invoices, missing events, changed stock and changed movements cause a nonzero verifier exit. A signature alone can verify a statement about a nonexistent result; that is why the independent database read is mandatory. No `verified:true` flag from the issuing agent is accepted as evidence.
+
+## Limits and retention
+
+Receipts, invoices, movements and approvals are durable business records containing customer labels and line data. They are not zero-retention AI context. This slice does not provide encryption at rest, server key rotation/revocation, external anchoring, retention/export/deletion administration, multi-process JSONL audit repair, staff roles or a production security assessment. Failed requests return errors rather than a separate signed denial receipt.
+
+The new guard applies only to `/business`. Legacy `/os/tasks/*`, `/orders` demo approvals and the existing hash-commitment “zkVM” paths remain outside this guarantee. A passing new workflow must not be presented as making every existing MuseBreak route authenticated or independently verifiable. No 24/7 uptime, universal prompt-injection immunity, physical MetaKey attestation or real ZK proof is claimed.

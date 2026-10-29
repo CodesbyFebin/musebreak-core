@@ -1,0 +1,25 @@
+{
+  "name": "MeTaBoss",
+  "repository": "https://github.com/CodesbyFebin/musebreak-core",
+  "maintainer": "CodesbyFebin",
+  "license": "MIT",
+  "description": "Experimental self-hostable AI gateway and Business OS with exact-payload invoice approval and independent local-state verification.",
+  "status": "development prototype; invoice slice pending PR #1",
+  "documentation_target": "https://codesbyfebin.github.io/musebreak-core/",
+  "documentation_target_status": "requires GitHub Pages enablement and successful deployment",
+  "implementation_pr": "https://github.com/CodesbyFebin/musebreak-core/pull/1",
+  "guarantee_scope": "Opt-in /business local invoice issuance, inventory movements and issuance event against trusted key and supplied snapshot.",
+  "excluded": [
+    "payment settlement",
+    "physical delivery",
+    "physical human-presence attestation",
+    "real zkVM",
+    "deployed robot or ROS integration",
+    "production qualification",
+    "universal prompt-injection defense"
+  ],
+  "robotics": "research direction only",
+  "expanded_name": "Meta AI Business Operations Sovereign System",
+  "former_name": "MuseBreak",
+  "affiliation": "Independent project; not an official Meta product or endorsement"
+}

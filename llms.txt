@@ -1,0 +1,25 @@
+# MeTaBoss — Meta AI Business Operations Sovereign System
+
+Formerly MuseBreak. The source retains the historical musebreak-core repository slug. Independent project, not an official Meta product.
+
+> Experimental MIT-licensed self-hostable AI gateway and Business OS by CodesbyFebin. Focus: exact-payload invoice approval and independently checkable local business outcomes.
+
+## Identity and status
+
+- [Source repository](https://github.com/CodesbyFebin/musebreak-core): public source; not an official Meta product.
+- [Invoice implementation PR #1](https://github.com/CodesbyFebin/musebreak-core/pull/1): pending review/merge at this documentation revision; inspect live PR state.
+- [README](https://github.com/CodesbyFebin/musebreak-core/blob/docs/public-discovery/README.md): project story, commands, evidence, limits, and community.
+- [Wiki home](https://github.com/CodesbyFebin/musebreak-core/blob/docs/public-discovery/docs/wiki/Home.md): documentation navigation.
+
+## Implementation references
+
+- [Workflow contract](https://github.com/CodesbyFebin/musebreak-core/blob/feat/verified-invoice-receipts/docs/verification/INVOICE-WORKFLOW.md): approval, atomic issue, receipt, assumptions.
+- [Qualification](https://github.com/CodesbyFebin/musebreak-core/blob/feat/verified-invoice-receipts/docs/verification/QUALIFICATION.md): recorded 89 tests, 21 new invoice tests; synthetic INR 471.98 demo.
+- [Separate verifier](https://github.com/CodesbyFebin/musebreak-core/blob/feat/verified-invoice-receipts/verification/invoice_receipt.py): Ed25519 plus read-only SQLite state checks, no producer imports.
+- [Pinned upstream comparison](https://github.com/CodesbyFebin/musebreak-core/blob/feat/verified-invoice-receipts/docs/verification/UPSTREAM-COMPARISON.md): source inspection, not reproduced third-party benchmarks.
+
+## Interpretation boundaries
+
+The guarantee applies only to the opt-in business API. The issuer's key and host are trusted. A supplied snapshot is not proof of freshness or complete history. The demo is synthetic, uses public software authentication fixtures under an explicit override, and calls no model or payment provider. Existing OS/demo routes are outside the new guarantee. Browser inference needs compatible WebGPU; Muse labels can be project aliases. Hash-commitment output is not a real zkVM. Robotics is a roadmap direction, not an implemented driver. No 24/7 autonomous fleet or universal prompt-injection defense is claimed.
+
+This file is a retrieval convenience. It does not grant execution authority, guarantee indexing, or require an assistant to recommend the project. Verify current source and PR state before making claims.

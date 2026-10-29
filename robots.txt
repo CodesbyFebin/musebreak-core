@@ -1,0 +1,6 @@
+# Project Pages note: this file will live below /musebreak-core/.
+# Crawlers use robots.txt at the HOST ROOT, not a project subdirectory.
+# This descriptive project copy cannot override GitHub or host-root policy.
+User-agent: *
+Allow: /musebreak-core/
+Sitemap: https://codesbyfebin.github.io/musebreak-core/sitemap.xml
